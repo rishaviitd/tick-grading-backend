@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Log Runs</title>
+    <link rel="stylesheet" href="/static/log.css" />
+  </head>
+  <body>
+    <h1>Available Log Runs</h1>
+    <ul>
+      {% for run in runs %}
+      <li><a href="/logs/{{ run }}">{{ run }}</a></li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

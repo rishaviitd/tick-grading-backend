@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Log {{ metadata.run_id }}</title>
+    <link rel="stylesheet" href="/static/log.css" />
+  </head>
+  <body>
+    <h1>Run ID: {{ metadata.run_id }}</h1>
+
+    <h2>Debug Steps</h2>
+    <ul>
+      {% for step in metadata.steps %}
+      <li>
+        <strong>{{ step.name }}</strong> - in: {{ step.input }} &rarr; out: {{
+        step.output }}
+      </li>
+      {% endfor %}
+    </ul>
+
+    <h2>Original URLs</h2>
+    <ul>
+      {% for url in metadata.urls %}
+      <li><a href="{{ url }}" target="_blank">{{ url }}</a></li>
+      {% endfor %}
+    </ul>
+
+    <h2>Pages</h2>
+    {% for page in metadata.pages %}
+    <h3>Page {{ loop.index0 }}</h3>
+    <div class="row">
+      <div class="col">
+        <h4>Raw</h4>
+        <img src="{{ static_url }}{{ page.raw }}" alt="raw" />
+      </div>
+      <div class="col">
+        <h4>Cropped</h4>
+        <img src="{{ static_url }}{{ page.cropped }}" alt="cropped" />
+      </div>
+      <div class="col">
+        <h4>Annotated</h4>
+        <img src="{{ static_url }}{{ page.annotation }}" alt="annotation" />
+      </div>
+    </div>
+    <h4>Boxes</h4>
+    <ul>
+      {% for b in page.boxes %}
+      <li>coords: {{ b.coords }} – {{ b.text }}</li>
+      {% endfor %}
+    </ul>
+    <h4>Question Crops</h4>
+    <div class="row">
+      {% for c in page.crops %}
+      <div class="col">
+        <h5>{{ c.label }}</h5>
+        <img src="{{ static_url }}{{ c.file }}" alt="crop" />
+        <p>{{ c.text }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+
+    <h2>Merged Crops</h2>
+    <div class="row">
+      {% for m in metadata.merged %}
+      <div class="col">
+        <h4>{{ m.label }}</h4>
+        <img src="{{ static_url }}{{ m.file }}" alt="merged" />
+        <p>{{ m.text }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </body>
+</html>

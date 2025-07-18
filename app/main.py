@@ -1,3 +1,5 @@
+# this is the backend for the demo
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List
@@ -15,6 +17,9 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 import traceback
+
+
+
 
 load_dotenv()
 

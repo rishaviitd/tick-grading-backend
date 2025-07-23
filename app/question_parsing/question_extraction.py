@@ -1368,7 +1368,7 @@ async def run_end_to_end_processing(file_content: bytes, filename: str = "upload
     logger = UnifiedLogger()
     pipeline_run_id = logger.create_run(LogType.QUESTION_EXTRACTION, "Complete CBSE Processing Pipeline", {
         "filename": filename,
-        "total_steps": 4
+        "total_steps": 5
     })
     
     # Initialize database integration
@@ -1612,6 +1612,48 @@ async def run_end_to_end_processing(file_content: bytes, filename: str = "upload
             print(error_msg)
         
         # =====================================================================
+        # STEP 5: COMBINE AND SAVE QUESTIONS
+        # =====================================================================
+        try:
+            logger.log_step(pipeline_run_id, "Step 5: Question Combination", "Starting question combination", "Combining data from all steps into final questions")
+            print("Step 5: Starting question combination...")
+            
+            # Only proceed if all required steps succeeded
+            required_steps = ['step3', 'step4']  # step1 and step2 are optional
+            if all(results['step_results'].get(step, {}).get('success', False) for step in required_steps):
+                success = await db_integration.combine_and_save_questions(pipeline_run_id)
+                
+                results['step_results']['step5'] = {
+                    'success': success,
+                    'questions_combined': success
+                }
+                
+                if success:
+                    logger.log_step(pipeline_run_id, "Step 5: Completed", "Question combination successful", "Successfully combined and saved questions to database and logs")
+                    print("Step 5: Question combination completed")
+                else:
+                    logger.log_step(pipeline_run_id, "Step 5: Failed", "Question combination failed", "Failed to combine questions")
+                    print("Step 5: Question combination failed")
+            else:
+                error_reason = "Required steps (3, 4) did not complete successfully"
+                logger.log_step(pipeline_run_id, "Step 5: Skipped", error_reason, f"Cannot proceed: {error_reason}")
+                print(f"Step 5: Skipped - {error_reason}")
+                results['step_results']['step5'] = {
+                    'success': False,
+                    'error': error_reason
+                }
+                
+        except Exception as e:
+            error_msg = f"Step 5 failed: {str(e)}"
+            results['errors'].append(error_msg)
+            results['step_results']['step5'] = {
+                'success': False,
+                'error': str(e)
+            }
+            logger.log_error(pipeline_run_id, "Step 5: Failed", e)
+            print(error_msg)
+        
+        # =====================================================================
         # FINALIZATION
         # =====================================================================
         
@@ -1637,6 +1679,7 @@ async def run_end_to_end_processing(file_content: bytes, filename: str = "upload
             'diagram_mapping': results['step_results'].get('step2', {}).get('mapping_generated', False),
             'questions_extracted': results['step_results'].get('step3', {}).get('questions_generated', False),
             'marks_mapping': results['step_results'].get('step4', {}).get('marks_generated', False),
+            'questions_combined': results['step_results'].get('step5', {}).get('questions_combined', False),
             'pipeline_run_id': pipeline_run_id,
             'filename': filename
         }

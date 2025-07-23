@@ -5,7 +5,8 @@ has_internal_choice=boolean
 primary_question=string
 secondary_question=string/can be null
 
-diagram_url=cloudinary-url
+primary_diagram_url=cloudinary-url
+secondary_diagram_url=cloudinary-url
 table_url=cloudinary-url
 primary_marks=string
 secondary_marks=string/can be null

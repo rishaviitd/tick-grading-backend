@@ -182,6 +182,65 @@ class UnifiedLogger:
         
         return f"{subfolder}/{filename}"
     
+    def save_combined_questions(self, run_id: str, combined_questions: List[Dict[str, Any]]) -> bool:
+        """Save combined questions to logs folder"""
+        try:
+            # Create step directory
+            step_dir = self.logs_root / run_id / "step5_question_combination"
+            step_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Save as JSON file
+            json_file_path = step_dir / "step5_combined_questions.json"
+            with open(json_file_path, 'w', encoding='utf-8') as f:
+                json.dump(combined_questions, f, indent=2, ensure_ascii=False, default=str)
+            
+            # Create a summary markdown file
+            markdown_file_path = step_dir / "step5_combined_questions.md"
+            with open(markdown_file_path, 'w', encoding='utf-8') as f:
+                f.write(f"# Combined Questions for Run ID: {run_id}\n\n")
+                f.write(f"**Total Questions:** {len(combined_questions)}\n\n")
+                f.write("---\n\n")
+                
+                for question in combined_questions:
+                    f.write(f"## Question {question['question_identifier']}\n\n")
+                    f.write(f"**Type:** {question['question_type']}\n\n")
+                    f.write(f"**Has Internal Choice:** {question['has_internal_choice']}\n\n")
+                    f.write(f"**Primary Marks:** {question['primary_marks']}\n\n")
+                    
+                    if question['secondary_marks']:
+                        f.write(f"**Secondary Marks:** {question['secondary_marks']}\n\n")
+                    
+                    if question['primary_diagram_url']:
+                        f.write(f"**Primary Diagram:** {question['primary_diagram_url']}\n\n")
+                    
+                    if question['secondary_diagram_url']:
+                        f.write(f"**Secondary Diagram:** {question['secondary_diagram_url']}\n\n")
+                    
+                    f.write("### Primary Question\n\n")
+                    f.write(f"{question['primary_question']}\n\n")
+                    
+                    if question['secondary_question']:
+                        f.write("### Secondary Question\n\n")
+                        f.write(f"{question['secondary_question']}\n\n")
+                    
+                    f.write("---\n\n")
+            
+            # Update metadata to include the new files
+            metadata = self._load_metadata(run_id)
+            metadata["files"].extend([
+                f"step5_question_combination/step5_combined_questions.json",
+                f"step5_question_combination/step5_combined_questions.md"
+            ])
+            self._save_metadata(run_id, metadata)
+            
+            print(f"Saved combined questions to logs: {json_file_path}")
+            print(f"Saved combined questions summary to logs: {markdown_file_path}")
+            return True
+            
+        except Exception as e:
+            print(f"Error saving questions to logs: {e}")
+            return False
+    
     def update_data(self, run_id: str, key: str, value: Any):
         """Update data field for a run"""
         metadata = self._load_metadata(run_id)

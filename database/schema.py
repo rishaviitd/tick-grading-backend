@@ -141,7 +141,7 @@ class QuestionExtractionResult(BaseModel):
 class MarksMappingEntry(BaseModel):
     """Schema for individual marks mapping entry"""
     question_type: str = Field(..., description="Type of question (MCQ/Case Study/Normal Subjective/etc.)")
-    marks: str = Field(..., description="Marks allocation description")
+    marks: List[str] = Field(..., description="Marks allocation description (list for internal choice, single item for others)")
 
 
 class MarksMappingResult(BaseModel):
@@ -157,6 +157,46 @@ class MarksMappingResult(BaseModel):
     # Processing metadata
     mapping_success: bool = Field(..., description="Whether mapping was successful")
     raw_response: Optional[str] = Field(None, description="Raw response from Gemini AI")
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+
+
+# =============================================================================
+# STEP 5: COMBINED QUESTIONS SCHEMA
+# =============================================================================
+
+class Question(BaseModel):
+    """Schema for combined questions from all processing steps"""
+    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    run_id: str = Field(..., description="Unique run identifier")
+    
+    # Question identification
+    question_identifier: str = Field(..., description="Question number/identifier")
+    has_internal_choice: bool = Field(..., description="Whether question has internal choice")
+    
+    # Question content
+    primary_question: str = Field(..., description="Primary question text")
+    secondary_question: Optional[str] = Field(None, description="Secondary question text (for internal choice)")
+    
+    # Diagram URLs
+    primary_diagram_url: Optional[str] = Field(None, description="Cloudinary URL for primary diagram")
+    secondary_diagram_url: Optional[str] = Field(None, description="Cloudinary URL for secondary diagram")
+    table_url: Optional[str] = Field(None, description="Cloudinary URL for table")
+    
+    # Marks
+    primary_marks: str = Field(..., description="Primary marks allocation")
+    secondary_marks: Optional[str] = Field(None, description="Secondary marks allocation (for internal choice)")
+    
+    # Question type
+    question_type: str = Field(..., description="Type of question (MCQ/Assertion Reasoning/Case Study/Normal Subjective/Internal Choice)")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -226,7 +266,8 @@ COLLECTION_NAMES = {
     "diagram_extraction": "diagram_extraction_results",
     "diagram_mapping": "diagram_mapping_results", 
     "question_extraction": "question_extraction_results",
-    "marks_mapping": "marks_mapping_results"
+    "marks_mapping": "marks_mapping_results",
+    "questions": "questions"
 }
 
 
@@ -256,5 +297,10 @@ INDEXES = {
     "marks_mapping_results": [
         [("run_id", 1)],  # Primary lookup by run_id
         [("created_at", -1)],  # Sort by creation time
+    ],
+    "questions": [
+        [("run_id", 1)],  # Primary lookup by run_id
+        [("question_identifier", 1)],  # Secondary lookup by question identifier
+        [("created_at", -1)]  # Sort by creation time
     ]
 } 

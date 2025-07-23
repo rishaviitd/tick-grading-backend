@@ -6,16 +6,14 @@ CBSE processing pipeline, allowing automatic saving of results to MongoDB.
 """
 
 import os
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 from datetime import datetime
-from pathlib import Path
-import json
 
 from .connection import pipeline_db, initialize_database
 from .schema import (
     PipelineResult, DiagramExtractionResult, DiagramMappingResult,
     QuestionExtractionResult, MarksMappingResult, ProcessingStep,
-    DiagramMappingEntry, MarksMappingEntry
+    DiagramMappingEntry, MarksMappingEntry, Question
 )
 
 
@@ -177,9 +175,21 @@ class PipelineDatabaseIntegration:
         # Convert marks JSON to proper format
         marks_entries = {}
         for question_key, marks_data in marks_json.items():
+            # Handle marks data that might be a list or string
+            marks_value = marks_data.get("marks", "")
+            if isinstance(marks_value, list):
+                # Already a list, use as is
+                marks_list = [str(mark) for mark in marks_value]
+            elif isinstance(marks_value, str):
+                # Single string, convert to list
+                marks_list = [marks_value]
+            else:
+                # Convert any other type to list
+                marks_list = [str(marks_value)]
+            
             entry = MarksMappingEntry(
                 question_type=marks_data.get("question_type", ""),
-                marks=marks_data.get("marks", "")
+                marks=marks_list
             )
             marks_entries[question_key] = entry
         
@@ -194,6 +204,265 @@ class PipelineDatabaseIntegration:
         )
         
         return await pipeline_db.save_marks_mapping(mapping_result)
+    
+    async def combine_and_save_questions(self, run_id: str) -> bool:
+        """Combine data from all steps and save questions to database"""
+        if not await self.initialize():
+            return False
+        
+        try:
+            # Get data from all previous steps
+            print(f"Retrieving data for question combination: run_id={run_id}")
+            question_extraction = await self._get_question_extraction_data(run_id)
+            marks_mapping = await self._get_marks_mapping_data(run_id)
+            diagram_mapping = await self._get_diagram_mapping_data(run_id)
+            
+            print(f"Data retrieval results:")
+            print(f"  - Question extraction: {'Found' if question_extraction else 'Missing'}")
+            print(f"  - Marks mapping: {'Found' if marks_mapping else 'Missing'}")
+            print(f"  - Diagram mapping: {'Found' if diagram_mapping else 'Missing'}")
+            
+            if not question_extraction or not marks_mapping:
+                print(f"Missing required data for question combination: run_id={run_id}")
+                if not question_extraction:
+                    print("  - Question extraction data is missing")
+                if not marks_mapping:
+                    print("  - Marks mapping data is missing")
+                return False
+            
+            # Parse questions from markdown
+            questions = self._parse_questions_from_markdown(question_extraction["questions_markdown"])
+            
+            # Combine and save each question
+            saved_count = 0
+            combined_questions = []
+            for question_data in questions:
+                combined_question = self._combine_question_data(
+                    question_data, marks_mapping, diagram_mapping, run_id
+                )
+                if combined_question:
+                    success = await pipeline_db.save_question(combined_question)
+                    if success:
+                        saved_count += 1
+                        combined_questions.append(combined_question.dict(by_alias=True))
+            
+            # Save to logs folder using the logger
+            if combined_questions:
+                import sys
+                import os
+                # Add the project root to the path for absolute import
+                project_root = os.path.join(os.path.dirname(__file__), '..')
+                if project_root not in sys.path:
+                    sys.path.insert(0, project_root)
+                from app.logging.logger import UnifiedLogger
+                logger = UnifiedLogger()
+                logger.save_combined_questions(run_id, combined_questions)
+            
+            print(f"Successfully combined and saved {saved_count} questions for run_id={run_id}")
+            return saved_count > 0
+            
+        except Exception as e:
+            print(f"Error combining questions: {e}")
+            return False
+    
+    async def _get_question_extraction_data(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get question extraction data from database"""
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["question_extraction"])
+            if collection is None:
+                print(f"Question extraction collection not found for run_id: {run_id}")
+                return None
+            
+            doc = await collection.find_one({"run_id": run_id})
+            if doc:
+                print(f"Found question extraction data for run_id: {run_id}")
+                return {
+                    "questions_markdown": doc.get("questions_markdown", ""),
+                    "questions_count": doc.get("questions_count", 0)
+                }
+            else:
+                print(f"No question extraction data found for run_id: {run_id}")
+            return None
+        except Exception as e:
+            print(f"Error getting question extraction data: {e}")
+            return None
+    
+    async def _get_marks_mapping_data(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get marks mapping data from database"""
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["marks_mapping"])
+            if collection is None:
+                print(f"Marks mapping collection not found for run_id: {run_id}")
+                return None
+            
+            doc = await collection.find_one({"run_id": run_id})
+            if doc and "marks_mapping" in doc:
+                print(f"Found marks mapping data for run_id: {run_id}")
+                return doc["marks_mapping"]
+            else:
+                print(f"No marks mapping data found for run_id: {run_id}")
+            return None
+        except Exception as e:
+            print(f"Error getting marks mapping data: {e}")
+            return None
+    
+    async def _get_diagram_mapping_data(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get diagram mapping data from database"""
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["diagram_mapping"])
+            if collection is None:
+                return None
+            
+            doc = await collection.find_one({"run_id": run_id})
+            if doc and "mapping" in doc:
+                return doc["mapping"]
+            return None
+        except Exception as e:
+            print(f"Error getting diagram mapping data: {e}")
+            return None
+    
+    def _parse_questions_from_markdown(self, markdown_content: str) -> List[Dict[str, Any]]:
+        """Parse questions from markdown content"""
+        questions = []
+        
+        # Split by [####] to get individual questions
+        question_chunks = markdown_content.split("[####]")
+        
+        for i, chunk in enumerate(question_chunks):
+            chunk = chunk.strip()
+            if not chunk:
+                continue
+            
+            question_identifier = str(i + 1)
+            
+            # Check for internal choice (we'll determine case study later from marks mapping)
+            if "[%OR%]" in chunk:
+                # Internal choice: split by [%OR%]
+                parts = chunk.split("[%OR%]")
+                primary_question = parts[0].strip()
+                secondary_question = parts[1].strip() if len(parts) > 1 else None
+                
+                questions.append({
+                    "question_identifier": question_identifier,
+                    "has_internal_choice": True,
+                    "primary_question": primary_question,
+                    "secondary_question": secondary_question
+                })
+            else:
+                # No internal choice
+                questions.append({
+                    "question_identifier": question_identifier,
+                    "has_internal_choice": False,
+                    "primary_question": chunk,
+                    "secondary_question": None
+                })
+        
+        return questions
+    
+
+    
+    def _combine_question_data(self, question_data: Dict[str, Any], 
+                              marks_mapping: Dict[str, Any], 
+                              diagram_mapping: Dict[str, Any],
+                              run_id: str) -> Optional[Question]:
+        """Combine question data with marks and diagram mapping"""
+        try:
+            question_identifier = question_data["question_identifier"]
+            question_key = f"question-{question_identifier}"
+            
+            # Get marks data
+            marks_data = marks_mapping.get(question_key, {})
+            question_type = marks_data.get("question_type", "Unknown")
+            marks = marks_data.get("marks", "")
+            
+            # Determine if it's actually a case study (override the text-based detection)
+            is_case_study = question_type.lower() == "case study"
+            
+            # Adjust has_internal_choice based on question type
+            has_internal_choice = question_data["has_internal_choice"]
+            if is_case_study:
+                has_internal_choice = False
+                # For case study, reconstruct the full question text including [%OR%]
+                if question_data["secondary_question"]:
+                    primary_question = f"{question_data['primary_question']}\n[%OR%]\n{question_data['secondary_question']}"
+                else:
+                    primary_question = question_data["primary_question"]
+            else:
+                primary_question = question_data["primary_question"]
+            
+            # Process marks
+            primary_marks, secondary_marks = self._process_marks(marks, has_internal_choice)
+            
+            # Process diagrams
+            primary_diagram_url, secondary_diagram_url = self._process_diagrams(
+                question_identifier, diagram_mapping, has_internal_choice
+            )
+            
+            # Create Question object
+            question = Question(
+                run_id=run_id,
+                question_identifier=question_identifier,
+                has_internal_choice=has_internal_choice,
+                primary_question=primary_question,
+                secondary_question=None if is_case_study else question_data["secondary_question"],
+                primary_diagram_url=primary_diagram_url,
+                secondary_diagram_url=secondary_diagram_url,
+                table_url=None,  # Currently null as mentioned
+                primary_marks=primary_marks,
+                secondary_marks=secondary_marks,
+                question_type=question_type,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            return question
+            
+        except Exception as e:
+            print(f"Error combining question data: {e}")
+            return None
+    
+    def _process_marks(self, marks: List[str], has_internal_choice: bool) -> Tuple[str, Optional[str]]:
+        """Process marks list into primary and secondary marks"""
+        if not has_internal_choice:
+            # For non-internal choice, return the first mark as primary
+            return marks[0] if marks else "", None
+        
+        # For internal choice, return first and second marks
+        if len(marks) >= 2:
+            return marks[0], marks[1]
+        elif len(marks) == 1:
+            # Only one mark available, use as primary
+            return marks[0], None
+        else:
+            # No marks available
+            return "", None
+    
+    def _process_diagrams(self, question_identifier: str, diagram_mapping: Dict[str, Any], 
+                         has_internal_choice: bool) -> Tuple[Optional[str], Optional[str]]:
+        """Process diagram mapping for a question"""
+        primary_diagram_url = None
+        secondary_diagram_url = None
+        
+        # Find diagrams for this question
+        for figure_key, figure_data in diagram_mapping.items():
+            if figure_data.get("question_identifier") == question_identifier:
+                cloudinary_url = figure_data.get("cloudinary_url")
+                choice_location = figure_data.get("choice_location", "null")
+                
+                if choice_location == "null" or not has_internal_choice:
+                    # Diagram applies to entire question or no internal choice
+                    primary_diagram_url = cloudinary_url
+                elif choice_location == "first":
+                    primary_diagram_url = cloudinary_url
+                elif choice_location == "second":
+                    secondary_diagram_url = cloudinary_url
+        
+        return primary_diagram_url, secondary_diagram_url
+    
+
     
     async def save_final_outputs(self, final_outputs: Dict[str, Any]) -> bool:
         """Save final pipeline outputs"""

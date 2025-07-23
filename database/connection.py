@@ -16,7 +16,7 @@ import logging
 
 from .schema import (
     PipelineResult, DiagramExtractionResult, DiagramMappingResult,
-    QuestionExtractionResult, MarksMappingResult, COLLECTION_NAMES, INDEXES
+    QuestionExtractionResult, MarksMappingResult, Question, COLLECTION_NAMES, INDEXES
 )
 
 # Load environment variables
@@ -202,6 +202,28 @@ class PipelineDatabase:
             
         except Exception as e:
             logger.error(f"Failed to save marks mapping result: {e}")
+            return False
+    
+    async def save_question(self, question: Question) -> bool:
+        """Save a combined question to database"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["questions"])
+            if collection is None:
+                logger.error("Questions collection not found")
+                return False
+            
+            # Convert to dict and ensure run_id is set
+            data = question.dict(by_alias=True)
+            if not data.get("run_id"):
+                logger.error("Question must have run_id")
+                return False
+            
+            result = await collection.insert_one(data)
+            logger.info(f"Saved question with ID: {result.inserted_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save question: {e}")
             return False
     
     async def get_pipeline_by_run_id(self, run_id: str) -> Optional[Dict[str, Any]]:

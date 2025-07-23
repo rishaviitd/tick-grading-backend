@@ -111,7 +111,10 @@ def _load_model():
     try:
         # Check if CUDA is available
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        print(f"Using device: {device}")
+        if device == 'cuda':
+            print("Using CUDA GPU for model inference")
+        else:
+            print("Using CPU for model inference")
             
         # Create models directory in the question_parsing folder
         models_dir = os.path.join(os.path.dirname(__file__), 'models', 'DocLayout-YOLO-DocStructBench')
@@ -216,6 +219,136 @@ def log_diagram_snippets(figure_snippets: List[List]) -> Tuple[str, str]:
     metadata_file = run_dir / "metadata.json"
     return str(run_dir), str(metadata_file)
 
+def compose_diagram_preview(
+    figure_snippets: List[List[Image.Image]],
+    dpi: int = 300,
+    thumb_width: int = 200,
+    font_path: str = None
+) -> Image.Image:
+    """
+    Build a single PIL image that mirrors the UI layout:
+      - "Here are figures present:" heading
+      - For each page:
+          - Subheader "Page X"
+          - For each figure:
+              - Label "Figure Y"
+              - Thumbnail image resized to thumb_width
+    """
+    # Load fonts: H1 (48px bold), H2 (36px bold), H3 (24px regular)
+    if font_path:
+        try:
+            heading_font = ImageFont.truetype(font_path, size=48)
+            subheader_font = ImageFont.truetype(font_path, size=36)
+            label_font = ImageFont.truetype(font_path, size=30)
+        except Exception:
+            heading_font = ImageFont.load_default()
+            subheader_font = ImageFont.load_default()
+            label_font = ImageFont.load_default()
+    else:
+        # Try common system fonts for bold and regular
+        font_bold_candidates = [
+            "DejaVuSans-Bold.ttf",
+            "/Library/Fonts/Arial Bold.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        ]
+        font_reg_candidates = [
+            "DejaVuSans.ttf",
+            "/Library/Fonts/Arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        ]
+        heading_font = subheader_font = None
+        for fb in font_bold_candidates:
+            try:
+                heading_font = ImageFont.truetype(fb, size=48)
+                subheader_font = ImageFont.truetype(fb, size=36)
+                break
+            except Exception:
+                continue
+        label_font = None
+        for fr in font_reg_candidates:
+            try:
+                label_font = ImageFont.truetype(fr, size=30)
+                break
+            except Exception:
+                continue
+        # Fallback to default bitmap font if any loading failed
+        if heading_font is None or subheader_font is None or label_font is None:
+            heading_font = ImageFont.load_default()
+            subheader_font = ImageFont.load_default()
+            label_font = ImageFont.load_default()
+
+    # Layout parameters
+    left_margin = 20
+    # Increase top margin and vertical padding for better spacing
+    top_margin = 30
+    v_padding = 20
+    heading_text = "Here are figures present:"
+
+    # First pass: calculate canvas size
+    # Dummy draw to measure text using textbbox
+    dummy_img = Image.new("RGB", (10, 10))
+    draw_dummy = ImageDraw.Draw(dummy_img)
+    bbox = draw_dummy.textbbox((0, 0), heading_text, font=heading_font)
+    h_heading = bbox[3] - bbox[1]
+    total_height = top_margin
+    total_height += h_heading + v_padding
+
+    fig_counter = 1
+    for page_idx, figs in enumerate(figure_snippets):
+        if figs:
+            page_text = f"Page {page_idx + 1}"
+            bbox = draw_dummy.textbbox((0, 0), page_text, font=subheader_font)
+            h_page = bbox[3] - bbox[1]
+            total_height += h_page + v_padding
+            for fig_img in figs:
+                fig_label = f"VISUAL-{fig_counter}"
+                bbox = draw_dummy.textbbox((0, 0), fig_label, font=label_font)
+                h_label = bbox[3] - bbox[1]
+                total_height += h_label + v_padding
+                # thumbnail height
+                orig_w, orig_h = fig_img.size
+                scale = thumb_width / orig_w
+                thumb_h = int(orig_h * scale)
+                total_height += thumb_h + v_padding
+                fig_counter += 1
+    total_height += top_margin
+
+    # Canvas width and creation
+    canvas_width = thumb_width + left_margin * 2
+    canvas = Image.new("RGB", (canvas_width, total_height), "white")
+    draw = ImageDraw.Draw(canvas)
+
+    # Second pass: render content
+    y = top_margin
+    # Heading
+    draw.text((left_margin, y), heading_text, fill="black", font=heading_font)
+    y += h_heading + v_padding
+
+    fig_counter = 1
+    for page_idx, figs in enumerate(figure_snippets):
+        if figs:
+            page_text = f"Page {page_idx + 1}"
+            draw.text((left_margin, y), page_text, fill="black", font=subheader_font)
+            bbox = draw.textbbox((0, 0), page_text, font=subheader_font)
+            h_page = bbox[3] - bbox[1]
+            y += h_page + v_padding
+            for fig_img in figs:
+                fig_label = f"VISUAL-{fig_counter}"
+                draw.text((left_margin, y), fig_label, fill="black", font=label_font)
+                bbox = draw.textbbox((0, 0), fig_label, font=label_font)
+                h_label = bbox[3] - bbox[1]
+                y += h_label + v_padding
+                # Resize and paste thumbnail
+                orig_w, orig_h = fig_img.size
+                scale = thumb_width / orig_w
+                thumb_h = int(orig_h * scale)
+                thumb = fig_img.resize((thumb_width, thumb_h), resample=Image.Resampling.LANCZOS)
+                canvas.paste(thumb, (left_margin, y))
+                y += thumb_h + v_padding
+                fig_counter += 1
+
+    return canvas
+
 def extract_diagrams_from_pdf(file_path: str, conf_threshold: float = 0.25, iou_threshold: float = 0.45) -> Tuple[List, List[List]]:
     """Extract diagram images with detected bounding boxes from a PDF file"""
     try:
@@ -259,21 +392,57 @@ def extract_diagrams_from_pdf(file_path: str, conf_threshold: float = 0.25, iou_
                 vis = visualize_bbox(page, b, c, s, ID_TO_NAMES)
                 results.append(vis)
                 
-                # Extract figure snippets
+                # Extract figure snippets with advanced merging logic
                 fig_indices = [i for i, cls in enumerate(c) if int(cls) == 3]
                 fig_boxes = [b[i] for i in fig_indices]
+                n = len(fig_boxes)
                 
-                page_figures = []
-                for box in fig_boxes:
-                    x1, y1, x2, y2 = box
-                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+                if n > 0:
+                    # Group overlapping boxes using union-find algorithm
+                    parents = list(range(n))
+                    def find(i):
+                        if parents[i] != i:
+                            parents[i] = find(parents[i])
+                        return parents[i]
                     
-                    # Extract figure from page
-                    page_array = np.array(page)
-                    figure_crop = page_array[y1:y2, x1:x2]
-                    page_figures.append(figure_crop)
+                    def union(i, j):
+                        pi, pj = find(i), find(j)
+                        if pi != pj:
+                            parents[pj] = pi
+                    
+                    # Merge boxes that overlap vertically
+                    for i1 in range(n):
+                        y1_i, y2_i = fig_boxes[i1][1], fig_boxes[i1][3]
+                        for j1 in range(i1 + 1, n):
+                            y1_j, y2_j = fig_boxes[j1][1], fig_boxes[j1][3]
+                            if y1_i < y2_j and y1_j < y2_i:
+                                union(i1, j1)
+                    
+                    # Group boxes by their root parent
+                    groups = defaultdict(list)
+                    for idx in range(n):
+                        root = find(idx)
+                        groups[root].append(idx)
+                    
+                    # Merge overlapping boxes and create crops
+                    merged = []
+                    for grp in groups.values():
+                        xs1 = [fig_boxes[i][0] for i in grp]
+                        ys1 = [fig_boxes[i][1] for i in grp]
+                        xs2 = [fig_boxes[i][2] for i in grp]
+                        ys2 = [fig_boxes[i][3] for i in grp]
+                        x1_ = min(xs1); y1_ = min(ys1)
+                        x2_ = max(xs2); y2_ = max(ys2)
+                        crop = page.crop((int(x1_), int(y1_), int(x2_), int(y2_)))
+                        merged.append((y1_, crop))
+                    
+                    # Sort by vertical position
+                    merged.sort(key=lambda x: x[0])
+                    page_figs = [crop for _, crop in merged]
+                else:
+                    page_figs = []
                 
-                figure_snippets.append(page_figures)
+                figure_snippets.append(page_figs)
                 
             except Exception as e:
                 print(f"Error processing page: {str(e)}")
@@ -533,10 +702,6 @@ Please follow this systematic approach and provide the comprehensive analysis wi
         output_filename = f"{base_pdf}__{base_img}.json"
         mapping_path = logger.save_file(run_id, json.dumps(mapping_json, indent=2), output_filename)
         
-        # Save the raw response as well
-        raw_filename = f"{base_pdf}__{base_img}_raw.txt"
-        logger.save_file(run_id, raw_text, raw_filename)
-        
         logger.complete_run(run_id, success=True)
         
         # Return the full path for compatibility
@@ -555,9 +720,191 @@ Please follow this systematic approach and provide the comprehensive analysis wi
             pass
         raise RuntimeError(f"Diagram mapping failed: {str(e)}")
 
-def generate_markdown_from_pdf(pdf_path: str) -> str:
+def generate_diagram_mapping_internal(pdf_path: str, image_path: str, logger: UnifiedLogger, run_id: str) -> str:
+    """Generate diagram mapping within an existing pipeline run"""
+    try:
+        logger.log_step(run_id, "Step 2: Upload Files", "Uploading PDF and image to Gemini", "Preparing files for analysis")
+        
+        # Use the same prompts as the original function
+        system_prompt = """
+You are a specialized diagram analysis assistant that maps extracted diagrams to their corresponding questions in CBSE Mathematics exam papers with 100% accuracy.
+
+## Core Identity
+You analyze image files containing extracted diagrams and PDF documents to create precise mappings between figure numbers and their corresponding question identifiers, including proper internal choice classification.
+
+## Input Specification
+- **Image file**: Contains extracted diagrams with figure numbers and page numbers
+- **PDF document**: CBSE Mathematics exam paper from which diagrams were extracted
+
+## Primary Objective
+Systematically analyze both files to create accurate mappings between figure numbers and their corresponding question identifiers, focusing ONLY on questions with actual printed visual content.
+
+## Critical Content Rules
+
+### MUST INCLUDE (Visual Content Only):
+- Questions with actual printed diagrams, figures, charts, or images
+- Visual elements that can be seen and described
+- Geometric shapes, graphs, illustrations that are physically present
+
+### MUST EXCLUDE (Textual Descriptions):
+- Questions with only textual descriptions like "A triangle ABC has sides 3, 4, 5..."
+- Questions stating "In a circle with center O..." without actual visual circle
+- Questions mentioning "Consider a function f(x)..." without actual graph
+- Questions saying "In the given figure..." when no actual figure is present
+- Any question that only describes mathematical objects without showing them
+
+## Internal Choice Classification Rules
+- **Case study questions**: Always `choice_location = "null"` (regardless of OR separators in subparts)
+- **Regular questions with OR**: Classify as `first/second/both` based on diagram location
+- **Regular questions without OR**: `choice_location = "null"`
+
+## Output Format
+```json
+{
+  "figure-1": {
+    "question_identifier": "question_number",
+    "choice_location": "first/second/null"
+  },
+  "figure-2": {
+    "question_identifier": "question_number",
+    "choice_location": "first/second/null"
+  }
+}
+```
+
+## Quality Standards
+- **100% Visual Content Focus**: Only map to questions with actual printed diagrams
+- **Complete Figure Coverage**: Every figure in the image must be mapped
+- **Precise Choice Classification**: Accurate determination of internal choice locations
+- **Verbatim Question Identification**: Match questions exactly as they appear in the PDF
+"""
+
+        user_prompt = """
+Please analyze the provided image file containing extracted diagrams and the PDF document they came from. Follow this systematic approach:
+
+## Step 1: Figure Image Analysis
+**Parse the provided image file:**
+- Identify and count all figures present in the image
+- For each figure, extract:
+  - Figure number/identifier (as labeled in the image)
+  - Page number (as indicated in the image)
+  - Generate a detailed description of each figure's visual content
+
+**Output format for Step 1:**
+```
+Total figures in image: [number]
+Figure-1: Page X - [Detailed visual description including diagram type, elements, labels, etc.]
+Figure-2: Page Y - [Detailed visual description including diagram type, elements, labels, etc.]
+...continue for all figures
+```
+
+## Step 2: PDF Document Question Analysis
+**Analyze the PDF document comprehensively:**
+- Count the total number of questions in the PDF
+- Identify which questions contain **actual visual diagrams/figures/images** (not just textual descriptions)
+- **IMPORTANT**: Only count questions with printed diagrams, figures, charts, or visual elements
+- **EXCLUDE**: Questions that only contain textual descriptions of diagrams without actual visual content
+- Count the total number of questions that have actual diagrams
+
+**Output format for Step 2:**
+```
+Total questions in PDF: [number]
+Questions with actual diagrams: [number]
+Question numbers containing actual diagrams: [list of question numbers]
+```
+
+## Final Output
+Present only the final mapping in JSON format:
+
+```json
+{
+  "figure-1": {
+    "question_identifier": "question_number",
+    "choice_location": "first/second/null"
+  },
+  "figure-2": {
+    "question_identifier": "question_number",
+    "choice_location": "first/second/null"
+  }
+}
+```
+"""
+        
+        # Upload files to Gemini
+        pdf_file = client.files.upload(file=pdf_path)
+        img_file = client.files.upload(file=image_path)
+
+        logger.log_step(run_id, "Step 2: Generate Mapping", "Processing with Gemini AI", "Analyzing diagrams and questions")
+
+        # Safety settings
+        safety_settings = [
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
+        ]
+
+        # Generation configuration
+        config = types.GenerateContentConfig(
+            temperature=0,
+            max_output_tokens=60000,
+            response_mime_type="text/plain",
+            safety_settings=safety_settings,
+            thinking_config=types.ThinkingConfig(thinking_budget=5000)
+        )
+
+        # Generate content
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[pdf_file, img_file, system_prompt, user_prompt],
+            config=config,
+        )
+
+        # Clean up uploaded files
+        client.files.delete(name=pdf_file.name)
+        client.files.delete(name=img_file.name)
+
+        # Parse response
+        raw_text = response.text.strip() if hasattr(response, 'text') else ''
+        if not raw_text:
+            raise ValueError("No mapping content generated")
+        
+        # Extract JSON
+        match = re.search(r"\{[\s\S]*\}", raw_text)
+        if not match:
+            raise ValueError("No JSON object found in mapping response")
+        
+        json_str = match.group(0)
+        mapping_json = json.loads(json_str)
+
+        # Save mapping within the pipeline run
+        output_filename = f"step2_diagram_mapping.json"
+        logger.save_file(run_id, json.dumps(mapping_json, indent=2), output_filename, 'step2_diagram_mapping')
+        
+        logger.log_step(run_id, "Step 2: Save Results", f"Mapped {len(mapping_json)} figures", "Saved mapping JSON")
+        
+        return raw_text
+
+    except Exception as e:
+        # Cleanup on error
+        try:
+            client.files.delete(name=pdf_file.name)
+        except:
+            pass
+        try:
+            client.files.delete(name=img_file.name)
+        except:
+            pass
+        raise RuntimeError(f"Diagram mapping failed: {str(e)}")
+
+def generate_markdown_from_pdf(pdf_path: str, logger: Optional[UnifiedLogger] = None, run_id: Optional[str] = None) -> str:
     """Generate markdown from PDF using Gemini"""
     try:
+        # If logger and run_id provided, use them; otherwise create new run
+        if logger and run_id:
+            logger.log_step(run_id, "Step 3: Upload PDF", "Uploading PDF to Gemini", "Preparing for question extraction")
+        else:
+            logger = UnifiedLogger()
+            run_id = logger.create_run(LogType.QUESTION_EXTRACTION, "Question Extraction", {
+                "pdf_file": os.path.basename(pdf_path)
+            })
         # System and user prompts for question extraction
         system_prompt = """
 # CBSE Mathematics Question Extraction Assistant
@@ -849,6 +1196,9 @@ After your complete analysis, provide the final extracted questions using this e
         # Upload file to Gemini
         pdf_file = client.files.upload(file=pdf_path)
 
+        if logger and run_id:
+            logger.log_step(run_id, "Step 3: Generate Questions", "Processing with Gemini AI", "Extracting questions from PDF")
+
         # Safety settings
         safety_settings = [
             {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
@@ -879,19 +1229,21 @@ After your complete analysis, provide the final extracted questions using this e
             raise ValueError("No markdown content generated")
 
         # Save markdown
-        logger = UnifiedLogger()
-        run_id = logger.create_run(LogType.QUESTION_EXTRACTION, "Question Extraction", {
-            "pdf_file": os.path.basename(pdf_path)
-        })
-        
-        output_filename = os.path.basename(pdf_path).replace('.pdf', '.md')
-        logger.save_file(run_id, markdown_text, output_filename)
-        
-        logger.complete_run(run_id, success=True)
-        
-        # Return the full path for compatibility
-        full_path = logger.logs_root / run_id / "files" / output_filename
-        return str(full_path)
+        if logger and run_id:
+            # Save within existing pipeline run
+            output_filename = f"step3_questions.md"
+            logger.save_file(run_id, markdown_text, output_filename, 'step3_question_extraction')
+            logger.log_step(run_id, "Step 3: Save Results", f"Generated {len(markdown_text)} characters", "Saved questions in markdown format")
+            return markdown_text
+        else:
+            # Create separate run (original behavior)
+            output_filename = os.path.basename(pdf_path).replace('.pdf', '.md')
+            logger.save_file(run_id, markdown_text, output_filename)
+            logger.complete_run(run_id, success=True)
+            
+            # Return the full path for compatibility
+            full_path = logger.logs_root / run_id / "files" / output_filename
+            return str(full_path)
 
     except Exception as e:
         # Cleanup on error
@@ -900,6 +1252,266 @@ After your complete analysis, provide the final extracted questions using this e
         except:
             pass
         raise RuntimeError(f"Markdown generation failed: {str(e)}")
+
+
+def generate_marks_mapping(pdf_path: str, logger: Optional[UnifiedLogger] = None, run_id: Optional[str] = None) -> Tuple[str, str]:
+    """Generate marks mapping using Gemini"""
+    try:
+        # If logger and run_id provided, use them; otherwise create new run
+        if logger and run_id:
+            logger.log_step(run_id, "Step 4: Upload PDF", "Uploading PDF to Gemini", "Preparing for marks mapping")
+        else:
+            logger = UnifiedLogger()
+            run_id = logger.create_run(LogType.MARKS_MAPPING, "Marks Mapping", {
+                "pdf_file": os.path.basename(pdf_path)
+            })
+        # System and user prompts (exact from original files)
+        system_prompt = """
+# System Prompt: CBSE Mathematics Question Paper Marks Extraction
+
+## Core Task
+You are a specialized CBSE question paper analyzer that extracts question numbers, question types, and marks allocation from CBSE format mathematics question papers. Your primary function is to systematically identify and categorize each question with its corresponding marks.
+
+## Key Constraints
+- All questions in the paper must be identified and included in the output
+- Each question must be classified by its type and marks allocation
+- The JSON output length must exactly match the total number of questions in the paper
+- Marks allocation must be accurate as specified in the question paper
+- Question numbering must follow the exact format used in the paper
+
+## Question Type Classification
+- **MCQ**: Multiple Choice Questions with options (A), (B), (C), (D)
+- **Case Study**: Questions that have subparts within them (can have internal choice in subparts)
+- **Normal Subjective**: Standard subjective questions without internal choice, not MCQ, not case study
+- **Internal Choice Subjective**: Questions with "OR" option where student can attempt one of two alternatives
+- **Assertion Reasoning**: Questions with assertion and reasoning statements to evaluate
+
+## Classification Priority Rules
+- If a question has subparts → **Case Study** (even if subparts have internal choice)
+- If a question has "OR" between just two main questions → **Internal Choice Subjective**
+- If a question is multiple choice with options → **MCQ**
+- If a question has assertion and reasoning format → **Assertion Reasoning**
+- If a question is subjective without above features → **Normal Subjective**
+
+## Marks Identification Rules
+- Look for explicit marks mentioned in brackets like [1], (2), [3 marks], etc.
+- Check section headers for marks allocation patterns
+- Verify marks consistency within question types
+- For Case Study questions with subparts, identify marks for each subpart and describe them in the marks field
+- For questions without subparts, use numerical marks value only
+- **For Internal Choice Subjective questions**: Use array format with exactly 2 elements
+
+## Critical Instructions
+- Count every main question in the paper (do not count subparts as separate questions)
+- For Case Study questions with subparts, describe all subparts and their marks in the marks field
+- Do not miss any question regardless of its position or format
+- Ensure question numbering matches exactly with the paper format
+- Verify total question count before finalizing output
+
+## Subpart Handling Rules
+- **Case Study with subparts**: Keep as single JSON entry for the main question
+- **Marks field for subparts**: Write descriptive text about subparts and their individual marks
+- **Format for subpart marks**: "Part (a): X marks, Part (b): Y marks, Part (c): Z marks" or similar descriptive format
+- **Total marks calculation**: Include total marks for the entire question if specified
+
+## Special Format for Internal Choice Questions
+- **Internal Choice Subjective questions MUST use array format**
+- **Array must have exactly 2 elements**
+- **Each element format**: "This question has [X] marks"
+- **Both elements should have the same marks value**
+
+## Output Format
+```
+{
+  "question-1": {
+    "question_type": "MCQ/Case Study/Normal Subjective/Internal Choice Subjective/Assertion Reasoning/Other Subjective",
+    "marks": "number OR descriptive text for subparts OR array for internal choice"
+  }
+}
+```
+
+## Marks Field Format Rules
+- **Case Study**: Use descriptive text (e.g., "Part (a): 1 mark, Part (b): 2 marks, Total: 3 marks")
+- **Internal Choice Subjective**: Use array with 2 elements (e.g., ["This question has [3] marks", "This question has [3] marks"])
+"""
+
+        user_prompt = """
+# CBSE Mathematics Question Paper Marks Extraction
+
+I need you to analyze the provided CBSE format mathematics question paper and extract the marks allocation for each question. Please follow this step-by-step approach:
+
+## Step 1: Paper Structure Analysis
+**Think through this systematically:**
+- First, read through the entire question paper
+- Identify the total number of main questions and their numbering system
+- Note the paper format and section divisions (if any)
+- Look for general instructions about marks allocation
+- **Important**: Count only main questions, not subparts as separate questions
+
+**Reasoning process:**
+```
+Total main questions: [Count main questions only]
+Paper sections: [Section A, B, C, etc. if applicable]
+Question numbering format: [1, 2, 3... etc.]
+Case Study questions: [List questions with subparts like Q5: has (a), (b), (c)]
+```
+
+## Step 2: Question Type Identification
+**For each question, analyze:**
+- Does it have multiple choice options (A), (B), (C), (D)? → **MCQ**
+- Does it have subparts (like (a), (b), (c) or (i), (ii), (iii))? → **Case Study**
+- Does it have "OR" option between just two main questions? → **Internal Choice Subjective**
+- Does it have assertion and reasoning format? → **Assertion Reasoning**
+- Is it a regular subjective question without above features? → **Normal Subjective**
+
+**Classification Priority:**
+- Subparts present = Case Study (even if subparts have internal choice)
+- "OR" between two main questions = Internal Choice Subjective
+- Multiple choice options = MCQ
+- Assertion-Reasoning format = Assertion Reasoning
+- Regular subjective = Normal Subjective
+
+**Reasoning process:**
+```
+Question 1: Has subparts? [Yes/No] → Has OR? [Yes/No] → Type = [MCQ/Case Study/Normal Subjective/Internal Choice Subjective/Assertion Reasoning/Other Subjective], Marks = [X]
+Question 2: Has subparts? [Yes/No] → Has OR? [Yes/No] → Type = [MCQ/Case Study/Normal Subjective/Internal Choice Subjective/Assertion Reasoning/Other Subjective], Marks = [X]
+...and so on
+```
+
+## Step 3: Marks Extraction
+**For each question, identify:**
+- Look for explicit marks mentioned in brackets like [1], (2), [3 marks]
+- Check section headers for marks patterns
+- Verify marks consistency within similar question types
+- **For Case Study questions**: Identify marks for each subpart and create descriptive text
+- **For simple questions**: Use numerical marks value only
+- **For Internal Choice Subjective questions**: Create array with 2 identical elements
+- Note any special marking schemes
+
+**Reasoning process:**
+```
+Question X: Found marks indicator "[2]" → 2
+Question Y (Case Study): Part (a) has "[1]", Part (b) has "[2]" → "Part (a): 1 mark, Part (b): 2 marks, Total: 3 marks"
+Question Z (Internal Choice): Explicit "(5 marks)" → ["This question has [5] marks", "This question has [5] marks"]
+```
+
+## Step 4: Validation and Final Mapping
+**Consolidate your findings:**
+- Verify total main question count matches your analysis
+- Check for any missed questions
+- Ensure marks allocation is consistent with CBSE patterns
+- Double-check question numbering format
+- **Important**: Ensure Case Study questions have descriptive marks text including all subparts
+- **Important**: Ensure Internal Choice Subjective questions use array format with exactly 2 elements
+
+**Present your reasoning clearly before giving the final answer.**
+
+## Expected Output Format:
+The final output must be in JSON format with the following structure:
+```json
+{
+  "question-1": {
+    "question_type": "MCQ",
+    "marks": [X] marks
+  },
+  "question-2": {
+    "question_type": "Case Study", 
+    "marks": "Description of marks for each subpart and it's internal choices"
+  },
+  "question-3": {
+    "question_type": "Internal Choice Subjective",
+    "marks": ["This question has [X] marks", "This question has [Y] marks"]
+  },
+  "question-4": {
+    "question_type": "Normal Subjective",
+    "marks": [X] marks
+  },
+  "question-5": {
+    "question_type": "Assertion Reasoning",
+    "marks": [X] marks
+  }
+
+}
+```
+## CRITICAL MARKS FORMAT RULES:
+- **MCQ**: Use simple number format (e.g., [X] marks)
+- **Normal Subjective**: Use simple number format (e.g., [X] marks)
+- **Assertion Reasoning**: Use simple number format (e.g., [X] marks)
+- **Case Study**: Use descriptive text explaining the mark distribution for each subpart and any internal choices (e.g., "Description of marks for each subpart and it's internal choices")
+- **Internal Choice Subjective**: Use array with exactly 2 elements showing the marks for each choice option (e.g., ["This question has [X] marks", "This question has [Y] marks"])
+
+"""
+        
+        # Upload file to Gemini
+        pdf_file = client.files.upload(file=pdf_path)
+
+        if logger and run_id:
+            logger.log_step(run_id, "Step 4: Generate Marks Mapping", "Processing with Gemini AI", "Analyzing question types and marks")
+
+        # Safety settings
+        safety_settings = [
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
+        ]
+
+        # Generation configuration
+        config = types.GenerateContentConfig(
+            temperature=0,
+            max_output_tokens=60000,
+            response_mime_type="text/plain",
+            safety_settings=safety_settings,
+            thinking_config=types.ThinkingConfig(thinking_budget=512)
+        )
+
+        # Generate content
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-lite-preview-06-17",
+            contents=[pdf_file, system_prompt, user_prompt],
+            config=config,
+        )
+
+        # Clean up uploaded file
+        client.files.delete(name=pdf_file.name)
+
+        # Parse response
+        raw_text = response.text.strip() if hasattr(response, 'text') else ''
+        if not raw_text:
+            raise ValueError("No mapping content generated")
+        
+        # Extract JSON
+        match = re.search(r"\{[\s\S]*\}", raw_text)
+        if not match:
+            raise ValueError("No JSON object found in response")
+        
+        json_str = match.group(0)
+        mapping_json = json.loads(json_str)
+
+        # Save mapping
+        if logger and run_id:
+            # Save within existing pipeline run
+            output_filename = f"step4_marks_mapping.json"
+            logger.save_file(run_id, json.dumps(mapping_json, indent=2), output_filename, 'step4_marks_mapping')
+            
+            logger.log_step(run_id, "Step 4: Save Results", f"Mapped {len(mapping_json)} questions", "Saved marks mapping JSON")
+            
+            return raw_text, raw_text  # Return content instead of paths for unified mode
+        else:
+            # Create separate run (original behavior)
+            output_filename = os.path.basename(pdf_path).replace('.pdf', '_marks.json')
+            marks_path = logger.save_file(run_id, json.dumps(mapping_json, indent=2), output_filename)
+        
+        logger.complete_run(run_id, success=True)
+        
+        # Return the full path for compatibility
+        full_path = logger.logs_root / run_id / "files" / output_filename
+        return str(full_path), raw_text
+
+    except Exception as e:
+        # Cleanup on error
+        try:
+            client.files.delete(name=pdf_file.name)
+        except:
+            pass
+        raise RuntimeError(f"Marks mapping generation failed: {str(e)}")
 
 # =============================================================================
 # MAIN PROCESSING FUNCTIONS
@@ -946,6 +1558,13 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
     
     temp_files = []  # Keep track of temporary files for cleanup
     
+    # Initialize unified logger for the entire pipeline
+    logger = UnifiedLogger()
+    pipeline_run_id = logger.create_run(LogType.QUESTION_EXTRACTION, "Complete CBSE Processing Pipeline", {
+        "filename": filename,
+        "total_steps": 4
+    })
+    
     try:
         # Save uploaded file temporarily
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
@@ -953,36 +1572,52 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
             temp_pdf_path = tmp_file.name
             temp_files.append(temp_pdf_path)
         
+        logger.log_step(pipeline_run_id, "Step 0: File Upload", f"File: {filename}", "File uploaded successfully")
         print("Step 0: File uploaded successfully")
         
         # =====================================================================
         # STEP 1: DIAGRAM EXTRACTION
         # =====================================================================
         try:
+            logger.log_step(pipeline_run_id, "Step 1: Diagram Extraction", "Starting diagram extraction", "Analyzing PDF for diagrams")
             print("Step 1: Starting diagram extraction...")
             
             parsed_images, figure_snippets = extract_diagrams_from_pdf(temp_pdf_path)
             
             # Create a single overview image for the mapping step
             preview_image_for_mapping_path = None
-            if parsed_images:
-                overview_image = vstack_images(parsed_images)
+            if figure_snippets and any(figs for figs in figure_snippets):
+                # Use the improved compose_diagram_preview function
+                overview_image = compose_diagram_preview(figure_snippets, thumb_width=800)
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp_img:
-                    overview_image.save(tmp_img, format="PNG")
+                    overview_image.save(tmp_img, format="PNG", dpi=(300, 300))
                     preview_image_for_mapping_path = tmp_img.name
                     temp_files.append(preview_image_for_mapping_path)
 
-            # Log snippets and metadata for debugging and viewing
-            images_dir, meta_path = log_diagram_snippets(figure_snippets)
+            # Save figure snippets within the main pipeline run
+            total_figures = sum(len(figs) for figs in figure_snippets)
+            logger.log_step(pipeline_run_id, "Step 1: Processing Results", f"Total diagrams found: {total_figures}", f"Extracted {total_figures} diagrams from {len(figure_snippets)} pages")
+            
+            # Save each figure within the pipeline run
+            for page_idx, page_figures in enumerate(figure_snippets):
+                for fig_idx, figure_img in enumerate(page_figures):
+                    filename = f'step1_page_{page_idx+1}_figure_{fig_idx+1}.png'
+                    logger.save_image(pipeline_run_id, figure_img, filename, 'step1_diagram_extraction')
+            
+            # Save overview image if created
+            if preview_image_for_mapping_path:
+                import cv2
+                overview_img = cv2.imread(preview_image_for_mapping_path)
+                logger.save_image(pipeline_run_id, overview_img, 'step1_overview_image.png', 'step1_diagram_extraction')
             
             results['step_results']['step1'] = {
                 'success': True,
-                'images_dir': images_dir,
-                'meta_path': meta_path,
-                'total_figures': sum(len(figs) for figs in figure_snippets)
+                'total_figures': total_figures,
+                'pages_processed': len(figure_snippets)
             }
             
-            print(f"Step 1: Extracted {results['step_results']['step1']['total_figures']} diagrams")
+            logger.log_step(pipeline_run_id, "Step 1: Completed", f"Success: {total_figures} diagrams", "Diagram extraction completed successfully")
+            print(f"Step 1: Extracted {total_figures} diagrams")
                 
         except Exception as e:
             error_msg = f"Step 1 failed: {str(e)}"
@@ -991,27 +1626,31 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
                 'success': False,
                 'error': str(e)
             }
+            logger.log_error(pipeline_run_id, "Step 1: Failed", e)
             print(error_msg)
         
         # =====================================================================
         # STEP 2: DIAGRAM MAPPING
         # =====================================================================
         try:
+            logger.log_step(pipeline_run_id, "Step 2: Diagram Mapping", "Starting diagram mapping", "Mapping extracted diagrams to questions")
             print("Step 2: Starting diagram mapping...")
             
             # Check if step 1 was successful AND if an overview image was created
             if results['step_results'].get('step1', {}).get('success', False) and preview_image_for_mapping_path:
-                mapping_path, raw_response = generate_diagram_mapping(temp_pdf_path, preview_image_for_mapping_path)
+                # Generate mapping within the main pipeline context
+                raw_response = generate_diagram_mapping_internal(temp_pdf_path, preview_image_for_mapping_path, logger, pipeline_run_id)
                 
                 results['step_results']['step2'] = {
                     'success': True,
-                    'mapping_path': mapping_path,
-                    'raw_response': raw_response
+                    'mapping_generated': True
                 }
                 
+                logger.log_step(pipeline_run_id, "Step 2: Completed", "Diagram mapping successful", "Generated diagram-to-question mapping")
                 print("Step 2: Diagram mapping completed")
             else:
                 error_reason = "No diagrams found to map" if results['step_results'].get('step1', {}).get('success', False) else "Step 1 failed"
+                logger.log_step(pipeline_run_id, "Step 2: Skipped", error_reason, f"Cannot proceed: {error_reason}")
                 print(f"Step 2: Skipped - {error_reason}")
                 results['step_results']['step2'] = {
                     'success': False,
@@ -1025,21 +1664,24 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
                 'success': False,
                 'error': str(e)
             }
+            logger.log_error(pipeline_run_id, "Step 2: Failed", e)
             print(error_msg)
         
         # =====================================================================
         # STEP 3: FULL PDF QUESTION EXTRACTION
         # =====================================================================
         try:
+            logger.log_step(pipeline_run_id, "Step 3: Question Extraction", "Starting question extraction", "Extracting questions from PDF")
             print("Step 3: Starting full PDF question extraction...")
             
-            questions_path = generate_markdown_from_pdf(temp_pdf_path)
+            markdown_content = generate_markdown_from_pdf(temp_pdf_path, logger, pipeline_run_id)
             
             results['step_results']['step3'] = {
                 'success': True,
-                'questions_path': questions_path
+                'questions_generated': True
             }
             
+            logger.log_step(pipeline_run_id, "Step 3: Completed", "Question extraction successful", "Generated markdown format questions")
             print("Step 3: Full PDF question extraction completed")
                 
         except Exception as e:
@@ -1049,6 +1691,34 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
                 'success': False,
                 'error': str(e)
             }
+            logger.log_error(pipeline_run_id, "Step 3: Failed", e)
+            print(error_msg)
+
+        # =====================================================================
+        # STEP 4: MARKS MAPPING
+        # =====================================================================
+        try:
+            logger.log_step(pipeline_run_id, "Step 4: Marks Mapping", "Starting marks mapping", "Analyzing question types and marks allocation")
+            print("Step 4: Starting marks mapping...")
+            
+            marks_content = generate_marks_mapping(temp_pdf_path, logger, pipeline_run_id)
+            
+            results['step_results']['step4'] = {
+                'success': True,
+                'marks_generated': True
+            }
+            
+            logger.log_step(pipeline_run_id, "Step 4: Completed", "Marks mapping successful", "Generated question types and marks allocation")
+            print("Step 4: Marks mapping completed")
+                
+        except Exception as e:
+            error_msg = f"Step 4 failed: {str(e)}"
+            results['errors'].append(error_msg)
+            results['step_results']['step4'] = {
+                'success': False,
+                'error': str(e)
+            }
+            logger.log_error(pipeline_run_id, "Step 4: Failed", e)
             print(error_msg)
         
         # =====================================================================
@@ -1058,19 +1728,27 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
         # Mark as successful if at least one step succeeded
         if any(step.get('success', False) for step in results['step_results'].values()):
             results['success'] = True
+            logger.complete_run(pipeline_run_id, success=True)
+        else:
+            logger.complete_run(pipeline_run_id, success=False)
         
         results['final_outputs'] = {
             'total_diagrams': results['step_results'].get('step1', {}).get('total_figures', 0),
-            'diagram_mapping': results['step_results'].get('step2', {}).get('mapping_path'),
-            'questions_extracted': results['step_results'].get('step3', {}).get('questions_path'),
+            'diagram_mapping': results['step_results'].get('step2', {}).get('mapping_generated', False),
+            'questions_extracted': results['step_results'].get('step3', {}).get('questions_generated', False),
+            'marks_mapping': results['step_results'].get('step4', {}).get('marks_generated', False),
+            'pipeline_run_id': pipeline_run_id,
             'filename': filename
         }
         
+        logger.log_step(pipeline_run_id, "Pipeline Completion", "All steps completed", f"Processing finished with success: {results['success']}")
         print("🎉 End-to-end processing completed!")
         
     except Exception as e:
         error_msg = f"Fatal error in end-to-end processing: {str(e)}"
         results['errors'].append(error_msg)
+        logger.log_error(pipeline_run_id, "Fatal Pipeline Error", e)
+        logger.complete_run(pipeline_run_id, success=False)
         print(error_msg)
     
     finally:

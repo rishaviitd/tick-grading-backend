@@ -22,6 +22,7 @@ class LogType(Enum):
     DIAGRAM_EXTRACTION = "diagram_extraction"
     DIAGRAM_MAPPING = "diagram_mapping"
     QUESTION_EXTRACTION = "question_extraction"
+    MARKS_MAPPING = "marks_mapping"
     MARGIN_ANALYSIS = "margin_analysis"
     ERROR = "error"
 

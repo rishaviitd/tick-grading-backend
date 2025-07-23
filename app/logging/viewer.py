@@ -23,6 +23,7 @@ class LogViewer:
             "diagram_extraction": [],
             "diagram_mapping": [],
             "question_extraction": [],
+            "marks_mapping": [],
             "margin_analysis": [],
             "error": [],
             "other": []
@@ -59,6 +60,10 @@ class LogViewer:
             "question_extraction": {
                 "title": "📝 Question Extraction",
                 "description": "Question text extraction and formatting"
+            },
+            "marks_mapping": {
+                "title": "🎯 Marks Mapping",
+                "description": "Question type classification and marks allocation"
             },
             "margin_analysis": {
                 "title": "📊 Margin Analysis",
@@ -156,6 +161,7 @@ class LogViewer:
             "diagram_extraction": "unified_log.html", 
             "diagram_mapping": "unified_log.html",
             "question_extraction": "unified_log.html",
+            "marks_mapping": "unified_log.html",
             "margin_analysis": "unified_log.html",
             "error": "unified_log.html",
             "other": "unified_log.html"

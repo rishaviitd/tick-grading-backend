@@ -221,6 +221,10 @@ class UnifiedLogger:
         except FileNotFoundError:
             return None
     
+    def get_run_dir(self, run_id: str) -> str:
+        """Get the directory path for a specific run"""
+        return str(self.logs_root / run_id)
+    
     def _load_metadata(self, run_id: str) -> Dict[str, Any]:
         """Load metadata for a run"""
         metadata_file = self.logs_root / run_id / "metadata.json"

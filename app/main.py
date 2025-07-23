@@ -273,7 +273,7 @@ async def process_cbse_paper(pdf_file: UploadFile = File(...)):
         file_content = await pdf_file.read()
         
         # Run the end-to-end processing
-        results = run_end_to_end_processing(file_content, pdf_file.filename)
+        results = await run_end_to_end_processing(file_content, pdf_file.filename)
         
         # Build response
         response = QuestionExtractionResponse(

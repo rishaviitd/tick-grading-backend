@@ -26,9 +26,21 @@ from matplotlib.patches import Rectangle
 from collections import defaultdict
 from ..logging import UnifiedLogger, LogType
 from pathlib import Path
+import cloudinary.uploader
+import cloudinary
+from io import BytesIO
+from database import get_db_integration
 
 # Load environment variables
 load_dotenv()
+
+# Configure Cloudinary
+cloudinary.config(
+    cloud_name=os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key=os.getenv('CLOUDINARY_API_KEY'),
+    api_secret=os.getenv('CLOUDINARY_API_SECRET'),
+    secure=True
+)
 
 # Environment variable for Gemini API key
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -458,267 +470,7 @@ def extract_diagrams_from_pdf(file_path: str, conf_threshold: float = 0.25, iou_
 # GEMINI API FUNCTIONS
 # =============================================================================
 
-def generate_diagram_mapping(pdf_path: str, image_path: str) -> Tuple[str, str]:
-    """Generate diagram mapping using Gemini"""
-    try:
-        # System and user prompts for diagram mapping
-        system_prompt = """
-You are a specialized diagram analysis assistant that maps extracted diagrams to their corresponding questions in CBSE Mathematics exam papers with 100% accuracy.
 
-## Core Identity
-You analyze image files containing extracted diagrams and PDF documents to create precise mappings between figure numbers and their corresponding question identifiers, including proper internal choice classification.
-
-## Input Specification
-- **Image file**: Contains extracted diagrams with figure numbers and page numbers
-- **PDF document**: CBSE Mathematics exam paper from which diagrams were extracted
-
-## Primary Objective
-Systematically analyze both files to create accurate mappings between figure numbers and their corresponding question identifiers, focusing ONLY on questions with actual printed visual content.
-
-## Critical Content Rules
-
-### MUST INCLUDE (Visual Content Only):
-- Questions with actual printed diagrams, figures, charts, or images
-- Visual elements that can be seen and described
-- Geometric shapes, graphs, illustrations that are physically present
-
-### MUST EXCLUDE (Textual Descriptions):
-- Questions with only textual descriptions like "A triangle ABC has sides 3, 4, 5..."
-- Questions stating "In a circle with center O..." without actual visual circle
-- Questions mentioning "Consider a function f(x)..." without actual graph
-- Questions saying "In the given figure..." when no actual figure is present
-- Any question that only describes mathematical objects without showing them
-
-## Internal Choice Classification Rules
-- **Case study questions**: Always `choice_location = "null"` (regardless of OR separators in subparts)
-- **Regular questions with OR**: Classify as `first/second/both` based on diagram location
-- **Regular questions without OR**: `choice_location = "null"`
-
-## Output Format
-```json
-{
-  "figure-1": {
-    "question_identifier": "question_number",
-    "choice_location": "first/second/null"
-  },
-  "figure-2": {
-    "question_identifier": "question_number",
-    "choice_location": "first/second/null"
-  }
-}
-```
-
-## Quality Standards
-- **100% Visual Content Focus**: Only map to questions with actual printed diagrams
-- **Complete Figure Coverage**: Every figure in the image must be mapped
-- **Precise Choice Classification**: Accurate determination of internal choice locations
-- **Verbatim Question Identification**: Match questions exactly as they appear in the PDF
-"""
-
-        user_prompt = """
-Please analyze the provided image file containing extracted diagrams and the PDF document they came from. Follow this systematic approach:
-
-## Step 1: Figure Image Analysis
-**Parse the provided image file:**
-- Identify and count all figures present in the image
-- For each figure, extract:
-  - Figure number/identifier (as labeled in the image)
-  - Page number (as indicated in the image)
-  - Generate a detailed description of each figure's visual content
-
-**Output format for Step 1:**
-```
-Total figures in image: [number]
-Figure-1: Page X - [Detailed visual description including diagram type, elements, labels, etc.]
-Figure-2: Page Y - [Detailed visual description including diagram type, elements, labels, etc.]
-...continue for all figures
-```
-
-## Step 2: PDF Document Question Analysis
-**Analyze the PDF document comprehensively:**
-- Count the total number of questions in the PDF
-- Identify which questions contain **actual visual diagrams/figures/images** (not just textual descriptions)
-- **IMPORTANT**: Only count questions with printed diagrams, figures, charts, or visual elements
-- **EXCLUDE**: Questions that only contain textual descriptions of diagrams without actual visual content
-- Count the total number of questions that have actual diagrams
-
-**Output format for Step 2:**
-```
-Total questions in PDF: [number]
-Questions with actual diagrams: [number]
-Question numbers containing actual diagrams: [list of question numbers]
-```
-
-## Step 3: Question-wise Diagram Description
-**For each question that contains actual visual diagrams:**
-- Identify the question number
-- Determine if it's a case study type question
-- **CRITICAL**: Only analyze questions with actual printed diagrams/figures/images
-- **IGNORE**: Questions that only have textual descriptions like "A triangle ABC has sides...", "In a circle with center O...", "Consider a function f(x)..." without actual visual diagrams
-- Locate the actual visual diagram(s) within that question
-- Generate a detailed description of the visual diagram as it appears in the question
-- Note the diagram's position within the question (beginning, middle, end, or in internal choice)
-
-**Output format for Step 3:**
-```
-Question X: 
-- Question type: [case study/regular]
-- Has actual visual diagram: [Yes - if printed diagram present]
-- Diagram location: [position in question]
-- Diagram description: [detailed description of the actual visual content]
-- Internal choice status: [first/second/both/null]
-
-Question Y:
-- Question type: [case study/regular]
-- Has actual visual diagram: [Yes - if printed diagram present]
-- Diagram location: [position in question] 
-- Diagram description: [detailed description of the actual visual content]
-- Internal choice status: [first/second/both/null]
-
-...continue for all questions with actual visual diagrams
-```
-
-## Step 4: Cross-Reference and Mapping
-**Match figures from image to questions:**
-- Compare the figure descriptions from Step 1 with question diagram descriptions from Step 3
-- Match based on:
-  - Visual content similarity
-  - Page number correlation
-  - Figure number references
-  - Context alignment
-
-**Output format for Step 4:**
-```
-Mapping Analysis:
-Figure-1 (Page X): Matches diagram in Question Y because [detailed reasoning]
-Figure-2 (Page Z): Matches diagram in Question W because [detailed reasoning]
-...continue for all figures
-```
-
-## Step 5: Internal Choice Classification
-**For each mapped figure:**
-- First, determine if the question is a case study type question
-- If it's a case study question: Classification = null (regardless of OR separators in subparts)
-- If it's a regular question:
-  - Determine if the question has an "OR" separator creating internal choices
-  - Identify where the diagram appears relative to the "OR"
-  - Classify as: first/second/both/null
-
-**Output format for Step 5:**
-```
-Internal Choice Analysis:
-Question Y: Case study type → Classification: null
-Question W: Regular question + Has OR separator → Figure-1 appears in [first/second/both] part
-Question Z: Regular question + No OR separator → Classification: null
-...continue for all questions
-```
-
-## Step 6: Final Output
-**Present only the final mapping in JSON format:**
-
-```json
-{
-  "figure-1": {
-    "question_identifier": "question_number",
-    "choice_location": "first/second/null"
-  },
-  "figure-2": {
-    "question_identifier": "question_number",
-    "choice_location": "first/second/null"
-  }
-}
-```
-
-## Critical Instructions:
-- Show your complete reasoning process for each step
-- **CRITICAL**: Only consider questions with actual printed diagrams/figures/images, NOT textual descriptions
-- **IGNORE**: Questions like "A triangle ABC with sides 3, 4, 5..." or "In the given circle..." that only have text descriptions without visual diagrams
-- **FOCUS**: Only on questions that have actual visual content (diagrams, figures, charts, images)
-- Ensure every figure from the image is mapped to a question with actual visual content
-- Provide detailed visual descriptions for accurate matching
-- **IMPORTANT**: For case study type questions, always set choice_location to "null" regardless of any OR separators in subparts
-- For regular questions with OR separators, classify as first/second/both based on diagram location
-- For regular questions without OR separators, set choice_location to "null"
-- Cross-verify all mappings before finalizing
-- The final mappings must include ALL figures present in the provided image
-- Maintain 100% accuracy in question identification and choice classification
-
-Please follow this systematic approach and provide the comprehensive analysis with the final JSON output.
-"""
-        
-        # Upload files to Gemini
-        pdf_file = client.files.upload(file=pdf_path)
-        img_file = client.files.upload(file=image_path)
-
-        # Safety settings
-        safety_settings = [
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_MEDIUM_AND_ABOVE"}
-        ]
-
-        # Generation configuration
-        config = types.GenerateContentConfig(
-            temperature=0,
-            max_output_tokens=60000,
-            response_mime_type="text/plain",
-            safety_settings=safety_settings,
-            thinking_config=types.ThinkingConfig(thinking_budget=5000)
-        )
-
-        # Generate content
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[pdf_file, img_file, system_prompt, user_prompt],
-            config=config,
-        )
-
-        # Clean up uploaded files
-        client.files.delete(name=pdf_file.name)
-        client.files.delete(name=img_file.name)
-
-        # Parse response
-        raw_text = response.text.strip() if hasattr(response, 'text') else ''
-        if not raw_text:
-            raise ValueError("No mapping content generated")
-        
-        # Extract JSON
-        match = re.search(r"\{[\s\S]*\}", raw_text)
-        if not match:
-            raise ValueError("No JSON object found in mapping response")
-        
-        json_str = match.group(0)
-        mapping_json = json.loads(json_str)
-
-        # Save mapping
-        logger = UnifiedLogger()
-        base_pdf = os.path.splitext(os.path.basename(pdf_path))[0]
-        base_img = os.path.splitext(os.path.basename(image_path))[0]
-        
-        run_id = logger.create_run(LogType.DIAGRAM_MAPPING, "Diagram Mapping", {
-            "pdf_file": os.path.basename(pdf_path),
-            "image_file": os.path.basename(image_path)
-        })
-        
-        # Save the mapping JSON file
-        output_filename = f"{base_pdf}__{base_img}.json"
-        mapping_path = logger.save_file(run_id, json.dumps(mapping_json, indent=2), output_filename)
-        
-        logger.complete_run(run_id, success=True)
-        
-        # Return the full path for compatibility
-        full_path = logger.logs_root / run_id / "files" / output_filename
-        return str(full_path), raw_text
-
-    except Exception as e:
-        # Cleanup on error
-        try:
-            client.files.delete(name=pdf_file.name)
-        except:
-            pass
-        try:
-            client.files.delete(name=img_file.name)
-        except:
-            pass
-        raise RuntimeError(f"Diagram mapping failed: {str(e)}")
 
 def generate_diagram_mapping_internal(pdf_path: str, image_path: str, logger: UnifiedLogger, run_id: str) -> str:
     """Generate diagram mapping within an existing pipeline run"""
@@ -874,11 +626,65 @@ Present only the final mapping in JSON format:
         json_str = match.group(0)
         mapping_json = json.loads(json_str)
 
-        # Save mapping within the pipeline run
+        # Upload figures to Cloudinary and update mapping with URLs
+        logger.log_step(run_id, "Step 2: Upload Figures", "Starting Cloudinary uploads", f"Uploading {len(mapping_json)} figures")
+        
+        # Get the run directory to find the figure files
+        run_dir = logger.logs_root / run_id
+        step1_dir = run_dir / "step1_diagram_extraction"
+        
+        # Get all figure files and sort them to create sequential mapping
+        figure_files = []
+        for file_path in step1_dir.glob("step1_page_*_figure_*.png"):
+            if "overview" not in file_path.name:  # Skip overview image
+                figure_files.append(file_path)
+        
+        # Sort files by page and figure number
+        figure_files.sort(key=lambda x: (
+            int(x.name.split('_')[2]),  # page number
+            int(x.name.split('_')[4].replace('.png', ''))  # figure number
+        ))
+        
+        # Update mapping with Cloudinary URLs
+        for i, figure_key in enumerate(mapping_json.keys()):
+            try:
+                if i < len(figure_files):
+                    figure_path = figure_files[i]
+                else:
+                    print(f"Warning: No file found for {figure_key}")
+                    mapping_json[figure_key]["cloudinary_url"] = ""
+                    continue
+                
+                if figure_path.exists():
+                    # Read the image file
+                    with open(figure_path, 'rb') as f:
+                        image_bytes = f.read()
+                    
+                    # Upload to Cloudinary
+                    blob = BytesIO(image_bytes)
+                    result = cloudinary.uploader.upload(
+                        blob,
+                        resource_type='image',
+                        format='png',
+                        public_id=f"diagram_mapping/{run_id}/{figure_key}"
+                    )
+                    
+                    # Add Cloudinary URL to the mapping
+                    mapping_json[figure_key]["cloudinary_url"] = result.get('secure_url', '')
+                    print(f"Uploaded {figure_key} to Cloudinary: {result.get('secure_url', '')}")
+                else:
+                    print(f"Warning: Figure file not found: {figure_path}")
+                    mapping_json[figure_key]["cloudinary_url"] = ""
+                    
+            except Exception as e:
+                print(f"Error uploading {figure_key} to Cloudinary: {e}")
+                mapping_json[figure_key]["cloudinary_url"] = ""
+
+        # Save updated mapping with Cloudinary URLs
         output_filename = f"step2_diagram_mapping.json"
         logger.save_file(run_id, json.dumps(mapping_json, indent=2), output_filename, 'step2_diagram_mapping')
         
-        logger.log_step(run_id, "Step 2: Save Results", f"Mapped {len(mapping_json)} figures", "Saved mapping JSON")
+        logger.log_step(run_id, "Step 2: Save Results", f"Mapped {len(mapping_json)} figures with Cloudinary URLs", "Saved mapping JSON with figure URLs")
         
         return raw_text
 
@@ -1538,7 +1344,7 @@ def vstack_images(images: List[np.ndarray]) -> Image.Image:
     return new_im
 
 
-def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf") -> Dict[str, Any]:
+async def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf") -> Dict[str, Any]:
     """
     Run the complete end-to-end processing pipeline
     
@@ -1564,6 +1370,19 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
         "filename": filename,
         "total_steps": 4
     })
+    
+    # Initialize database integration
+    db_integration = get_db_integration()
+    try:
+        await db_integration.start_pipeline(
+            run_id=pipeline_run_id,
+            title="Complete CBSE Processing Pipeline",
+            filename=filename,
+            file_size=len(file_content)
+        )
+    except Exception as db_error:
+        print(f"Warning: Failed to initialize database pipeline: {db_error}")
+        # Continue with file logging even if database fails
     
     try:
         # Save uploaded file temporarily
@@ -1618,6 +1437,18 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
             
             logger.log_step(pipeline_run_id, "Step 1: Completed", f"Success: {total_figures} diagrams", "Diagram extraction completed successfully")
             print(f"Step 1: Extracted {total_figures} diagrams")
+            
+            # Save to database
+            figure_files = [f'step1_page_{page_idx+1}_figure_{fig_idx+1}.png' 
+                          for page_idx, page_figures in enumerate(figure_snippets) 
+                          for fig_idx in range(len(page_figures))]
+            await db_integration.save_diagram_extraction_result(
+                run_id=pipeline_run_id,
+                total_figures=total_figures,
+                pages_processed=len(figure_snippets),
+                figure_files=figure_files,
+                overview_image_path='step1_overview_image.png' if preview_image_for_mapping_path else None
+            )
                 
         except Exception as e:
             error_msg = f"Step 1 failed: {str(e)}"
@@ -1648,6 +1479,28 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
                 
                 logger.log_step(pipeline_run_id, "Step 2: Completed", "Diagram mapping successful", "Generated diagram-to-question mapping")
                 print("Step 2: Diagram mapping completed")
+                
+                # Save to database - read the mapping JSON file
+                try:
+                    mapping_file_path = Path(logger.get_run_dir(pipeline_run_id)) / "step2_diagram_mapping" / "step2_diagram_mapping.json"
+                    if mapping_file_path.exists():
+                        with open(mapping_file_path, 'r') as f:
+                            mapping_json = json.load(f)
+                        
+                        # Read raw response file
+                        raw_response = None
+                        raw_file_path = Path(logger.get_run_dir(pipeline_run_id)) / "step2_diagram_mapping" / "step2_diagram_mapping_raw.txt"
+                        if raw_file_path.exists():
+                            with open(raw_file_path, 'r') as f:
+                                raw_response = f.read()
+                        
+                        await db_integration.save_diagram_mapping_result(
+                            run_id=pipeline_run_id,
+                            mapping_json=mapping_json,
+                            raw_response=raw_response
+                        )
+                except Exception as db_error:
+                    print(f"Warning: Failed to save diagram mapping to database: {db_error}")
             else:
                 error_reason = "No diagrams found to map" if results['step_results'].get('step1', {}).get('success', False) else "Step 1 failed"
                 logger.log_step(pipeline_run_id, "Step 2: Skipped", error_reason, f"Cannot proceed: {error_reason}")
@@ -1683,6 +1536,21 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
             
             logger.log_step(pipeline_run_id, "Step 3: Completed", "Question extraction successful", "Generated markdown format questions")
             print("Step 3: Full PDF question extraction completed")
+            
+            # Save to database - read the markdown file
+            try:
+                markdown_file_path = Path(logger.get_run_dir(pipeline_run_id)) / "step3_question_extraction" / "step3_questions.md"
+                if markdown_file_path.exists():
+                    with open(markdown_file_path, 'r') as f:
+                        questions_markdown = f.read()
+                    
+                    await db_integration.save_question_extraction_result(
+                        run_id=pipeline_run_id,
+                        questions_markdown=questions_markdown,
+                        markdown_file_path=str(markdown_file_path)
+                    )
+            except Exception as db_error:
+                print(f"Warning: Failed to save question extraction to database: {db_error}")
                 
         except Exception as e:
             error_msg = f"Step 3 failed: {str(e)}"
@@ -1710,6 +1578,28 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
             
             logger.log_step(pipeline_run_id, "Step 4: Completed", "Marks mapping successful", "Generated question types and marks allocation")
             print("Step 4: Marks mapping completed")
+            
+            # Save to database - read the marks mapping JSON file
+            try:
+                marks_file_path = Path(logger.get_run_dir(pipeline_run_id)) / "step4_marks_mapping" / "step4_marks_mapping.json"
+                if marks_file_path.exists():
+                    with open(marks_file_path, 'r') as f:
+                        marks_json = json.load(f)
+                    
+                    # Read raw response file
+                    raw_response = None
+                    raw_file_path = Path(logger.get_run_dir(pipeline_run_id)) / "step4_marks_mapping" / "step4_marks_mapping_raw.txt"
+                    if raw_file_path.exists():
+                        with open(raw_file_path, 'r') as f:
+                            raw_response = f.read()
+                    
+                    await db_integration.save_marks_mapping_result(
+                        run_id=pipeline_run_id,
+                        marks_json=marks_json,
+                        raw_response=raw_response
+                    )
+            except Exception as db_error:
+                print(f"Warning: Failed to save marks mapping to database: {db_error}")
                 
         except Exception as e:
             error_msg = f"Step 4 failed: {str(e)}"
@@ -1729,8 +1619,18 @@ def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf
         if any(step.get('success', False) for step in results['step_results'].values()):
             results['success'] = True
             logger.complete_run(pipeline_run_id, success=True)
+            # Complete pipeline in database
+            try:
+                await db_integration.complete_pipeline(success=True)
+            except Exception as db_error:
+                print(f"Warning: Failed to complete pipeline in database: {db_error}")
         else:
             logger.complete_run(pipeline_run_id, success=False)
+            # Mark pipeline as failed in database
+            try:
+                await db_integration.complete_pipeline(success=False)
+            except Exception as db_error:
+                print(f"Warning: Failed to mark pipeline as failed in database: {db_error}")
         
         results['final_outputs'] = {
             'total_diagrams': results['step_results'].get('step1', {}).get('total_figures', 0),

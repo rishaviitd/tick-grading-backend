@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Processing Logs</title>
+    <link rel="stylesheet" href="/static/log.css" />
+  </head>
+  <body>
+    <div class="logs-container">
+      <h1>Processing Logs</h1>
+
+      {% if total_runs > 0 %}
+      <div class="summary-box">
+        <p><strong>Total Log Entries:</strong> {{ total_runs }}</p>
+        <p><strong>Categories:</strong> {{ categories.keys()|length }}</p>
+      </div>
+
+      {% for category_key, runs in categories.items() %} {% if runs %}
+      <div class="log-section">
+        <h3>{{ category_info[category_key].title }}</h3>
+        <p class="category-description">
+          {{ category_info[category_key].description }}
+        </p>
+
+        <div class="runs-grid">
+          {% for run in runs %}
+          <div class="run-item">
+            <div class="run-header">
+              <h4><a href="/logs/{{ run.run_id }}">{{ run.title }}</a></h4>
+              <span class="status status-{{ run.status }}"
+                >{{ run.status.title() }}</span
+              >
+            </div>
+            <div class="run-meta">
+              <p class="run-id">ID: {{ run.run_id }}</p>
+              <p class="run-timestamp">{{ run.timestamp }}</p>
+              {% if run.data %}
+              <div class="run-data">
+                {% for key, value in run.data.items() %}
+                <span class="data-tag">{{ key }}: {{ value }}</span>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+            {% if run.errors %}
+            <div class="run-errors">
+              <span class="error-count">{{ run.errors|length }} error(s)</span>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %} {% endfor %} {% else %}
+      <div class="empty-state">
+        <h2>No logs available yet</h2>
+        <p>Upload some files to generate processing logs.</p>
+        <a href="/" class="cta-button">Go to Upload Interface</a>
+      </div>
+      {% endif %}
+
+      <div class="back-link">
+        <a href="/">← Back to Upload Interface</a>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>{{ metadata.title }} - {{ metadata.run_id }}</title>
+    <link rel="stylesheet" href="/static/log.css" />
+  </head>
+  <body>
+    <div class="logs-container">
+      <h1>{{ metadata.title }}</h1>
+      <div class="run-info">
+        <p><strong>Run ID:</strong> {{ metadata.run_id }}</p>
+        <p>
+          <strong>Type:</strong> {{ metadata.log_type.replace('_', ' ').title()
+          }}
+        </p>
+        <p>
+          <strong>Status:</strong>
+          <span class="status status-{{ metadata.status }}"
+            >{{ metadata.status.title() }}</span
+          >
+        </p>
+        <p><strong>Started:</strong> {{ metadata.timestamp }}</p>
+        {% if metadata.completed_at %}
+        <p><strong>Completed:</strong> {{ metadata.completed_at }}</p>
+        {% endif %}
+      </div>
+
+      <!-- Processing Steps -->
+      {% if metadata.steps %}
+      <h2>Processing Steps</h2>
+      <div class="steps-timeline">
+        {% for step in metadata.steps %}
+        <div class="step">
+          <h4>{{ step.name }}</h4>
+          <p class="timestamp">{{ step.timestamp }}</p>
+          {% if step.input %}
+          <div class="step-data"><strong>Input:</strong> {{ step.input }}</div>
+          {% endif %} {% if step.output %}
+          <div class="step-data">
+            <strong>Output:</strong> {{ step.output }}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Errors -->
+      {% if metadata.errors %}
+      <h2>Errors</h2>
+      <div class="errors-section">
+        {% for error in metadata.errors %}
+        <div class="error-item">
+          <h4>{{ error.message }}</h4>
+          <p class="timestamp">{{ error.timestamp }}</p>
+          {% if error.exception_type %}
+          <p><strong>Exception:</strong> {{ error.exception_type }}</p>
+          <div class="exception-details">{{ error.exception_details }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Response Processing Specific Content -->
+      {% if template_type == "response_processing" %} {% if urls %}
+      <h2>Original URLs</h2>
+      <ul class="url-list">
+        {% for url in urls %}
+        <li><a href="{{ url }}" target="_blank">{{ url }}</a></li>
+        {% endfor %}
+      </ul>
+      {% endif %} {% if pages %}
+      <h2>Processed Pages</h2>
+      {% for page in pages %}
+      <div class="page-section">
+        <h3>Page {{ loop.index0 + 1 }}</h3>
+        <div class="row">
+          <div class="col">
+            <h4>Raw</h4>
+            <img src="{{ static_url }}{{ page.raw }}" alt="raw" />
+          </div>
+          <div class="col">
+            <h4>Cropped</h4>
+            <img src="{{ static_url }}{{ page.cropped }}" alt="cropped" />
+          </div>
+          <div class="col">
+            <h4>Annotated</h4>
+            <img src="{{ static_url }}{{ page.annotation }}" alt="annotation" />
+          </div>
+        </div>
+
+        {% if page.boxes %}
+        <h4>Detected Text Boxes</h4>
+        <ul class="boxes-list">
+          {% for box in page.boxes %}
+          <li>{{ box.coords }} – {{ box.text }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %} {% if page.crops %}
+        <h4>Question Crops</h4>
+        <div class="row">
+          {% for crop in page.crops %}
+          <div class="col">
+            <h5>{{ crop.label }}</h5>
+            <img src="{{ static_url }}{{ crop.file }}" alt="crop" />
+            <p>{{ crop.text }}</p>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %} {% endif %} {% if merged %}
+      <h2>Merged Crops</h2>
+      <div class="row">
+        {% for item in merged %}
+        <div class="col">
+          <h4>{{ item.label }}</h4>
+          <img src="{{ static_url }}{{ item.file }}" alt="merged" />
+          <p>{{ item.text }}</p>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endif %}
+
+      <!-- Diagram Extraction Specific Content -->
+      {% if template_type == "diagram_extraction" %}
+      <div class="summary-box">
+        <h3>Extraction Summary</h3>
+        <p><strong>Total Pages:</strong> {{ total_pages }}</p>
+        <p><strong>Total Figures:</strong> {{ total_figures }}</p>
+      </div>
+
+      <h2>Extracted Diagrams by Page</h2>
+      {% for page_num, figures in files_by_page.items() %}
+      <div class="page-section">
+        <h3>Page {{ page_num }}</h3>
+        <p><strong>Figure Count:</strong> {{ figures|length }}</p>
+
+        {% if figures %}
+        <div class="row">
+          {% for figure in figures %}
+          <div class="col">
+            <h4>{{ figure.filename }}</h4>
+            <img
+              src="{{ static_url }}{{ figure.path }}"
+              alt="{{ figure.filename }}"
+            />
+            <p><small>{{ figure.timestamp }}</small></p>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p><em>No figures extracted from this page.</em></p>
+        {% endif %}
+      </div>
+      {% endfor %} {% endif %}
+
+      <!-- File Listing for Mappings/Questions -->
+      {% if template_type == "file_listing" %}
+      <h2>Generated Files</h2>
+      {% if files %}
+      <div class="files-grid">
+        {% for file in files %}
+        <div class="file-item">
+          <h4>{{ file.filename }}</h4>
+          <p class="file-info">
+            <span class="file-type">{{ file.type.title() }}</span>
+            <span class="file-timestamp">{{ file.timestamp }}</span>
+          </p>
+          <a
+            href="{{ static_url }}{{ file.path }}"
+            target="_blank"
+            class="file-link"
+          >
+            View File
+          </a>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p><em>No files generated for this run.</em></p>
+      {% endif %} {% endif %}
+
+      <!-- Data Section -->
+      {% if metadata.data %}
+      <h2>Run Data</h2>
+      <div class="data-section">
+        {% for key, value in metadata.data.items() %}
+        <div class="data-item">
+          <strong>{{ key.replace('_', ' ').title() }}:</strong> {{ value }}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <div class="back-link">
+        <a href="/logs/">← Back to All Logs</a>
+      </div>
+    </div>
+  </body>
+</html>

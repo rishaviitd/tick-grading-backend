@@ -1,11 +1,17 @@
 # this is the backend for the demo
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import List
 import httpx
 from dotenv import load_dotenv
-from .utils import margin_crop_images, process_crop_for_image, crop_questions_full_width, merge_continued_headers,upload_crops_to_cloudinary
+from .response_processing.utils import margin_crop_images, process_crop_for_image, crop_questions_full_width, merge_continued_headers,upload_crops_to_cloudinary
+from .question_parsing.question_extraction import (
+    run_end_to_end_processing,
+    DEPENDENCIES_OK,
+    GEMINI_CLIENT_OK
+)
+from .logging import UnifiedLogger, LogType, LogViewer
 import cv2
 import numpy as np
 import uuid
@@ -17,8 +23,6 @@ from fastapi.templating import Jinja2Templates
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 import traceback
-
-
 
 
 load_dotenv()
@@ -56,9 +60,30 @@ class AnswerUpload(BaseModel):
 class UploadsResponse(BaseModel):
     uploads: List[AnswerUpload]
 
+# New models for question extraction
+class ProcessingStepResult(BaseModel):
+    success: bool
+    error: str = None
+    total_figures: int = None
+    images_dir: str = None
+    meta_path: str = None
+    mapping_path: str = None
+    questions_path: str = None
+
+class QuestionExtractionResponse(BaseModel):
+    success: bool
+    errors: List[str] = []
+    step_results: dict = {}
+    final_outputs: dict = {}
+    message: str = ""
+
 @app.get('/')
 async def health_check():
     return {'status': 'ok'}
+
+@app.get('/demo', response_class=HTMLResponse)
+async def demo_page(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.post('/crop-margins', response_model=UploadsResponse)
 async def crop_margins(request: CropRequest):
@@ -66,170 +91,220 @@ async def crop_margins(request: CropRequest):
     if not request.urls:
         raise HTTPException(status_code=400, detail='`urls` list is empty')
 
-    # Chunk 1: set up logging directories
-    run_id = uuid.uuid4().hex
-    run_dir = LOGS_ROOT / run_id
-    for sub in ["margins", "annotations", "crops", "merged"]:
-        (run_dir / sub).mkdir(parents=True, exist_ok=True)
-    # Initialize metadata with steps log
-    metadata = {"run_id": run_id, "urls": request.urls, "steps": []}
-    # Log initial step
-    metadata['steps'].append({"name": "Received URLs", "input": request.urls, "output": ""})
-
-    # Use extended timeouts for potentially large image downloads
-    timeout = httpx.Timeout(connect=10.0, read=60.0, write=60.0, pool=60.0)
-    async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
-        images = []
-        for url in request.urls:
-            print(f"[crop-margins] Downloading image: {url}")
-            try:
-                response = await client.get(url)
-                response.raise_for_status()
-                images.append(response.content)
-                metadata['steps'].append({"name": "Downloaded Image", "input": url, "output": f"{len(response.content)} bytes"})
-            except Exception as exc:
-                print(f"[crop-margins] Failed to download {url}: {type(exc).__name__}: {repr(exc)}")
-                traceback.print_exc()
-                raise HTTPException(status_code=502, detail=f'Failed to download image {url}: {type(exc).__name__}: {exc}')
-
+    # Initialize unified logger
+    logger = UnifiedLogger()
+    run_id = logger.create_run(LogType.RESPONSE_PROCESSING, "Response Processing", {"urls": request.urls})
+    
     try:
-        margins = margin_crop_images(images)
-        print(f"[crop-margins] Computed margins: {margins}")
-        metadata['steps'].append({"name": "Margin Detection", "input": f"{len(images)} images", "output": margins})
-    except Exception as exc:
-        print(f"[crop-margins] margin_crop_images error: {exc}", exc_info=True)
-        metadata['steps'].append({"name": "Margin Detection Error", "input": images, "output": str(exc)})
-        raise HTTPException(status_code=500, detail=f'margin crop failed: {exc}')
+        logger.log_step(run_id, "Received URLs", request.urls)
+        
+        # Use extended timeouts for potentially large image downloads
+        timeout = httpx.Timeout(connect=10.0, read=60.0, write=60.0, pool=60.0)
+        async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
+            images = []
+            for url in request.urls:
+                print(f"[crop-margins] Downloading image: {url}")
+                try:
+                    response = await client.get(url)
+                    response.raise_for_status()
+                    images.append(response.content)
+                    logger.log_step(run_id, "Downloaded Image", url, f"{len(response.content)} bytes")
+                except Exception as exc:
+                    print(f"[crop-margins] Failed to download {url}: {type(exc).__name__}: {repr(exc)}")
+                    logger.log_error(run_id, f"Failed to download {url}", exc)
+                    traceback.print_exc()
+                    raise HTTPException(status_code=502, detail=f'Failed to download image {url}: {type(exc).__name__}: {exc}')
 
-    results = []
-    for idx, (content, margin) in enumerate(zip(images, margins)):
         try:
-            cr = process_crop_for_image(content, margin)
-            print(f"[crop-margins] Page {idx} processed -> margin={cr.margin}, boxes={len(cr.boxes)}")
-            metadata['steps'].append({"name": "Process Page", "input": {"page": idx, "margin": margin}, "output": {"boxes": len(cr.boxes)}})
-            # Log extracted answer labels from margin for this page
-            labels = [b.text for b in cr.boxes]
-            metadata['steps'].append({"name": "Extract Answers", "input": {"page": idx}, "output": labels})
+            margins = margin_crop_images(images)
+            print(f"[crop-margins] Computed margins: {margins}")
+            logger.log_step(run_id, "Margin Detection", f"{len(images)} images", margins)
         except Exception as exc:
-            print(f"[crop-margins] process_crop_for_image error on page {idx}: {exc}", exc_info=True)
-            cr = CropResult(margin=margin, boxes=[])
-        results.append(cr)
-    # Log number of boxes extracted per page
-    metadata['steps'].append({
-        "name": "Extract Boxes",
-        "input": f"{len(images)} pages",
-        "output": [len(cr.boxes) for cr in results]
-    })
+            print(f"[crop-margins] margin_crop_images error: {exc}", exc_info=True)
+            logger.log_error(run_id, "Margin crop failed", exc)
+            raise HTTPException(status_code=500, detail=f'margin crop failed: {exc}')
 
-    # Chunk 2: log raw and margin-cropped images and prepare page metadata
-    cv_images = [cv2.imdecode(np.frombuffer(content, np.uint8), cv2.IMREAD_COLOR) for content in images]
-    metadata['pages'] = []
-    for idx, (img, margin) in enumerate(zip(cv_images, margins)):
-        # Save raw image
-        raw_path = run_dir / 'margins' / f'page_{idx}_raw.jpg'
-        cv2.imwrite(str(raw_path), img)
-        # Save margin-cropped image
-        h, w = img.shape[:2]
-        if 0 < margin < w:
-            cropped = img[:, :margin]
-        else:
-            cropped = img
-        cropped_path = run_dir / 'margins' / f'page_{idx}_cropped.jpg'
-        cv2.imwrite(str(cropped_path), cropped)
-        # Initialize metadata for this page
-        metadata['pages'].append({
-            'raw': f"margins/{raw_path.name}",
-            'cropped': f"margins/{cropped_path.name}",
-            'margin': margin
-        })
-    # Annotate detected boxes on cropped images
-    for idx, cr in enumerate(results):
-        ann_img = cv_images[idx]
-        h, w = ann_img.shape[:2]
-        if 0 < cr.margin < w:
-            ann_img = ann_img[:, :cr.margin].copy()
-        else:
-            ann_img = ann_img.copy()
-        # Draw boxes and labels
-        for b in cr.boxes:
-            x1, y1, x2, y2 = b.coordinates
-            cv2.rectangle(ann_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(ann_img, b.text[:15], (x1, max(y1-5, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
-        ann_path = run_dir / 'annotations' / f'page_{idx}.jpg'
-        cv2.imwrite(str(ann_path), ann_img)
-        metadata['pages'][idx]['annotation'] = f"annotations/{ann_path.name}"
-        metadata['pages'][idx]['boxes'] = [
-            {'coords': b.coordinates, 'text': b.text}
-            for b in cr.boxes
-        ]
-    # STEP: slice and merge headers across pages
-    pages_boxes: List[List[dict]] = []
-    for cr in results:
-        page_boxes: List[dict] = []
-        for idx, b in enumerate(cr.boxes):
-            x1, y1, x2, y2 = b.coordinates
-            page_boxes.append({
-                'id': idx,
-                'bbox': (x1, y1, x2 - x1, y2 - y1),
-                'text': b.text
-            })
-        pages_boxes.append(page_boxes)
-    pages_crops = [crop_questions_full_width(img, boxes) for img, boxes in zip(cv_images, pages_boxes)]
-    metadata['steps'].append({"name": "Page Crops", "input": pages_boxes, "output": [list(c.keys()) for c in pages_crops]})
-    merged_crops = merge_continued_headers(pages_crops)
-    metadata['steps'].append({"name": "Merge Headers", "input": [list(c.keys()) for c in pages_crops], "output": [c[0] for c in merged_crops]})
-    # Chunk 2: save question crops and merged images
-    # Save per-page question crops
-    for idx, crops in enumerate(pages_crops):
-        page_crops = []
-        for label, (img, text) in crops.items():
+        results = []
+        for idx, (content, margin) in enumerate(zip(images, margins)):
+            try:
+                cr = process_crop_for_image(content, margin)
+                print(f"[crop-margins] Page {idx} processed -> margin={cr.margin}, boxes={len(cr.boxes)}")
+                logger.log_step(run_id, "Process Page", {"page": idx, "margin": margin}, {"boxes": len(cr.boxes)})
+                # Log extracted answer labels from margin for this page
+                labels = [b.text for b in cr.boxes]
+                logger.log_step(run_id, "Extract Answers", {"page": idx}, labels)
+            except Exception as exc:
+                print(f"[crop-margins] process_crop_for_image error on page {idx}: {exc}", exc_info=True)
+                logger.log_error(run_id, f"Process crop error on page {idx}", exc)
+                cr = CropResult(margin=margin, boxes=[])
+            results.append(cr)
+        
+        # Log number of boxes extracted per page
+        logger.log_step(run_id, "Extract Boxes", f"{len(images)} pages", [len(cr.boxes) for cr in results])
+
+        # Process and save images using unified logger
+        cv_images = [cv2.imdecode(np.frombuffer(content, np.uint8), cv2.IMREAD_COLOR) for content in images]
+        
+        # Save raw and margin-cropped images
+        for idx, (img, margin) in enumerate(zip(cv_images, margins)):
+            # Save raw image
+            logger.save_image(run_id, img, f'page_{idx}_raw.jpg', 'margins')
+            # Save margin-cropped image
+            h, w = img.shape[:2]
+            if 0 < margin < w:
+                cropped = img[:, :margin]
+            else:
+                cropped = img
+            logger.save_image(run_id, cropped, f'page_{idx}_cropped.jpg', 'margins')
+        
+        # Annotate detected boxes on cropped images
+        for idx, cr in enumerate(results):
+            ann_img = cv_images[idx]
+            h, w = ann_img.shape[:2]
+            if 0 < cr.margin < w:
+                ann_img = ann_img[:, :cr.margin].copy()
+            else:
+                ann_img = ann_img.copy()
+            # Draw boxes and labels
+            for b in cr.boxes:
+                x1, y1, x2, y2 = b.coordinates
+                cv2.rectangle(ann_img, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                cv2.putText(ann_img, b.text[:15], (x1, max(y1-5, 0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+            logger.save_image(run_id, ann_img, f'page_{idx}_annotation.jpg', 'annotations')
+        
+        # Process crops and headers
+        pages_boxes: List[List[dict]] = []
+        for cr in results:
+            page_boxes: List[dict] = []
+            for idx, b in enumerate(cr.boxes):
+                x1, y1, x2, y2 = b.coordinates
+                page_boxes.append({
+                    'id': idx,
+                    'bbox': (x1, y1, x2 - x1, y2 - y1),
+                    'text': b.text
+                })
+            pages_boxes.append(page_boxes)
+        
+        pages_crops = [crop_questions_full_width(img, boxes) for img, boxes in zip(cv_images, pages_boxes)]
+        logger.log_step(run_id, "Page Crops", pages_boxes, [list(c.keys()) for c in pages_crops])
+        
+        merged_crops = merge_continued_headers(pages_crops)
+        logger.log_step(run_id, "Merge Headers", [list(c.keys()) for c in pages_crops], [c[0] for c in merged_crops])
+        
+        # Save per-page question crops
+        for idx, crops in enumerate(pages_crops):
+            for label, (img, text) in crops.items():
+                safe = re.sub(r"\W+", "_", label)
+                filename = f'page_{idx}_{safe}.jpg'
+                # Convert RGB back to BGR for saving
+                bgr_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                logger.save_image(run_id, bgr_img, filename, 'crops')
+        
+        # Save merged question images
+        for label, img, text in merged_crops:
             safe = re.sub(r"\W+", "_", label)
-            crop_path = run_dir / 'crops' / f'page_{idx}_{safe}.jpg'
+            filename = f'{safe}.jpg'
             # Convert RGB back to BGR for saving
-            cv2.imwrite(str(crop_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-            page_crops.append({ 'label': label, 'text': text, 'file': f"crops/{crop_path.name}" })
-        metadata['pages'][idx]['crops'] = page_crops
-    # Save merged question images
-    metadata['merged'] = []
-    for label, img, text in merged_crops:
-        safe = re.sub(r"\W+", "_", label)
-        merge_path = run_dir / 'merged' / f'{safe}.jpg'
-        cv2.imwrite(str(merge_path), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
-        metadata['merged'].append({ 'label': label, 'text': text, 'file': f"merged/{merge_path.name}" })
-    # Write updated metadata including steps
-    with open(run_dir / 'metadata.json', 'w') as f:
-        json.dump(metadata, f, indent=2)
-    # Upload merged question crops to Cloudinary
-    uploads_meta = upload_crops_to_cloudinary(merged_crops)
-    # Log upload results
-    metadata['steps'].append({
-        "name": "Upload to Cloudinary",
-        "input": f"{len(merged_crops)} items",
-        "output": [u['image_url'] for u in uploads_meta]
-    })
-    # Build and return final response
-    return UploadsResponse(
-        uploads=[
-            AnswerUpload(
-                question_id=u['question_id'],
-                image_url=u['image_url']
-            ) for u in uploads_meta
-        ]
-    )
+            bgr_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+            logger.save_image(run_id, bgr_img, filename, 'merged')
+        
+        # Upload merged question crops to Cloudinary
+        uploads_meta = upload_crops_to_cloudinary(merged_crops)
+        logger.log_step(run_id, "Upload to Cloudinary", f"{len(merged_crops)} items", [u['image_url'] for u in uploads_meta])
+        
+        # Complete the run successfully
+        logger.complete_run(run_id, success=True)
+        
+        # Build and return final response
+        return UploadsResponse(
+            uploads=[
+                AnswerUpload(
+                    question_id=u['question_id'],
+                    image_url=u['image_url']
+                ) for u in uploads_meta
+            ]
+        )
+        
+    except Exception as exc:
+        logger.log_error(run_id, "Unexpected error in crop_margins", exc)
+        logger.complete_run(run_id, success=False)
+        raise
 
+# =============================================================================
+# NEW QUESTION EXTRACTION ENDPOINTS
+# =============================================================================
+
+@app.post('/process-cbse-paper', response_model=QuestionExtractionResponse)
+async def process_cbse_paper(pdf_file: UploadFile = File(...)):
+    """
+    Run the complete CBSE question paper processing pipeline.
+    
+    This endpoint processes a CBSE Mathematics question paper through all steps:
+    1. Extract diagrams from PDF using DocYOLO
+    2. Map diagrams to questions using Gemini AI
+    3. Extract questions in Markdown format using Gemini AI
+    
+    Returns detailed results from each step and final outputs.
+    """
+    print(f"[process-cbse-paper] Processing file: {pdf_file.filename}")
+    
+    # Check dependencies
+    if not DEPENDENCIES_OK:
+        raise HTTPException(
+            status_code=503,
+            detail="Missing required dependencies. Please install PyTorch, DocLayout YOLO, and other required packages."
+        )
+    
+    if not GEMINI_CLIENT_OK:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini client not available. Please check your API key configuration."
+        )
+    
+    # Validate file type
+    if not pdf_file.filename.lower().endswith('.pdf'):
+        raise HTTPException(
+            status_code=400,
+            detail="Only PDF files are supported"
+        )
+    
+    try:
+        # Read file content
+        file_content = await pdf_file.read()
+        
+        # Run the end-to-end processing
+        results = run_end_to_end_processing(file_content, pdf_file.filename)
+        
+        # Build response
+        response = QuestionExtractionResponse(
+            success=results['success'],
+            errors=results.get('errors', []),
+            step_results=results.get('step_results', {}),
+            final_outputs=results.get('final_outputs', {}),
+            message="Processing completed successfully" if results['success'] else "Processing completed with errors"
+        )
+        
+        print(f"[process-cbse-paper] Completed processing for {pdf_file.filename}")
+        return response
+        
+    except Exception as e:
+        print(f"[process-cbse-paper] Error processing {pdf_file.filename}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Processing failed: {str(e)}")
 
 
 @app.get("/logs/", response_class=HTMLResponse)
 async def list_runs(request: Request):
-    run_ids = sorted([p.name for p in LOGS_ROOT.iterdir() if p.is_dir()])
-    return templates.TemplateResponse("index.html", {"request": request, "runs": run_ids})
+    viewer = LogViewer()
+    context = viewer.generate_runs_index_context()
+    return templates.TemplateResponse("unified_logs_index.html", {"request": request, **context})
 
 @app.get("/logs/{run_id}", response_class=HTMLResponse)
 async def view_log(request: Request, run_id: str):
-    run_dir = LOGS_ROOT / run_id
-    metadata_file = run_dir / "metadata.json"
-    if not metadata_file.exists():
+    viewer = LogViewer()
+    context = viewer.generate_run_detail_context(run_id)
+    
+    if not context:
         raise HTTPException(status_code=404, detail="Run ID not found")
-    metadata = json.loads(metadata_file.read_text())
-    static_url = f"/logs/static/{run_id}/"
-    return templates.TemplateResponse("log.html", {"request": request, "metadata": metadata, "static_url": static_url})
+    
+    template_name = viewer.get_template_name(context["log_type"])
+    return templates.TemplateResponse(template_name, {"request": request, **context})

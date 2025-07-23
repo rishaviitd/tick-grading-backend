@@ -7,11 +7,12 @@ click==8.2.1
 fastapi==0.115.12
 google-auth==2.40.3
 google-generativeai
+google-genai
 h11==0.16.0
 httpcore==1.0.9
 httpx==0.28.1
 idna==3.10
-numpy==2.3.0
+numpy>=1.23.5,<2.0
 opencv-python==4.11.0.86
 Pillow
 pyasn1==0.6.1
@@ -31,3 +32,11 @@ cloudinary
 Jinja2==3.1.2
 aiofiles==23.2.1
 boto3==1.38.36
+motor
+torch
+torchvision
+doclayout-yolo==0.0.4
+huggingface_hub
+pdf2image==1.16.3
+PyMuPDF
+matplotlib

@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 import boto3
 from .tocr import extract_answers_from_margin, merge_answers_with_ocr
 
-load_dotenv()  # Load .env variables
+load_dotenv()
 
 # Configure Cloudinary using loaded environment variables
 cloudinary.config(
@@ -70,7 +70,7 @@ def margin_crop_images(image_bytes_list: List[bytes]) -> List[int]:
 
 def process_crop_for_image(content: bytes, margin: int):
     """Process a single image by cropping using margin, calling Google Document AI, and returning a CropResult"""
-    from .main import CropResult, Box
+    from ..main import CropResult, Box
     arr = np.frombuffer(content, np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
     if img is None:

@@ -42,7 +42,8 @@ def extract_answers_from_margin(margin_image_bytes: bytes) -> List[str]:
     """
     # Debug: save the margin image sent to Gemini for inspection
     try:
-        log_dir = Path(__file__).parent.parent / 'logs'
+        log_dir = Path(__file__).parent.parent.parent / 'logs'
+        log_dir.mkdir(parents=True, exist_ok=True)
         img_path = log_dir / f'margin_input_{uuid.uuid4().hex}.jpg'
         with open(img_path, 'wb') as f:
             f.write(margin_image_bytes)
@@ -73,7 +74,8 @@ def extract_answers_from_margin(margin_image_bytes: bytes) -> List[str]:
     print(f"[extract_answers_from_margin] Raw Gemini output: {raw}")
     
     # Log the response
-    log_dir = Path(__file__).parent.parent / 'logs'
+    log_dir = Path(__file__).parent.parent.parent / 'logs'
+    log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / 'gemini_margin.log'
     try:
         with open(log_file, 'a') as f:

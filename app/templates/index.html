@@ -1,16 +1,859 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <meta charset="utf-8" />
-    <title>Log Runs</title>
-    <link rel="stylesheet" href="/static/log.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>File Upload - Monochrome Elegance</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #000000;
+        --primary-light: #374151;
+        --primary-soft: #f3f4f6;
+        --secondary: #6b7280;
+        --background: #ffffff;
+        --background-soft: #fafafa;
+        --surface: #ffffff;
+        --surface-elevated: #fbfbfb;
+        --surface-hover: #f5f5f5;
+        --text-primary: #111827;
+        --text-secondary: #374151;
+        --text-muted: #6b7280;
+        --border: #e5e7eb;
+        --border-soft: #f3f4f6;
+        --success: #10b981;
+        --success-soft: #d1fae5;
+        --gradient: linear-gradient(
+          135deg,
+          #111827 0%,
+          #374151 50%,
+          #6b7280 100%
+        );
+        --gradient-soft: linear-gradient(
+          135deg,
+          rgba(17, 24, 39, 0.05) 0%,
+          rgba(55, 65, 81, 0.03) 100%
+        );
+        --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.12);
+        --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.04);
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+        background: var(--background);
+        color: var(--text-primary);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background-image: radial-gradient(
+            circle at 20% 80%,
+            rgba(0, 0, 0, 0.02) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(0, 0, 0, 0.015) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 40% 40%,
+            rgba(0, 0, 0, 0.01) 0%,
+            transparent 50%
+          );
+      }
+
+      .container {
+        background: var(--surface);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        box-shadow: var(--shadow-lg);
+        width: 100%;
+        max-width: 1100px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .container::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          var(--text-muted),
+          transparent
+        );
+        opacity: 0.2;
+      }
+
+      .header {
+        padding: 50px 40px 30px;
+        text-align: center;
+        background: var(--gradient-soft);
+      }
+
+      .header h1 {
+        font-size: 2.8rem;
+        font-weight: 700;
+        background: var(--gradient);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 16px;
+        letter-spacing: -0.02em;
+      }
+
+      .header p {
+        color: var(--text-secondary);
+        font-size: 1.2rem;
+        font-weight: 400;
+        opacity: 0.8;
+      }
+
+      .tabs {
+        display: flex;
+        padding: 0 40px;
+        position: relative;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border-soft);
+      }
+
+      .tab-button {
+        flex: 1;
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        padding: 24px 28px;
+        cursor: pointer;
+        font-size: 1.05rem;
+        font-weight: 500;
+        font-family: inherit;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        border-radius: 16px 16px 0 0;
+      }
+
+      .tab-button::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        width: 0;
+        height: 3px;
+        background: var(--primary);
+        border-radius: 3px 3px 0 0;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transform: translateX(-50%);
+      }
+
+      .tab-button:hover {
+        color: var(--text-secondary);
+        background: var(--surface-hover);
+        transform: translateY(-2px);
+      }
+
+      .tab-button.active {
+        color: var(--primary);
+        background: var(--primary-soft);
+        font-weight: 600;
+      }
+
+      .tab-button.active::before {
+        width: 70%;
+      }
+
+      .tab-content {
+        display: none;
+        padding: 50px 40px;
+        animation: fadeIn 0.5s ease-out;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .upload-section h2 {
+        font-size: 1.9rem;
+        font-weight: 600;
+        text-align: center;
+        margin-bottom: 40px;
+        color: var(--text-primary);
+        letter-spacing: -0.01em;
+      }
+
+      .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 20px;
+        padding: 70px 40px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        background: var(--background-soft);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .upload-area::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(0, 0, 0, 0.03),
+          transparent
+        );
+        transition: left 0.6s ease-out;
+      }
+
+      .upload-area:hover {
+        border-color: var(--primary-light);
+        background: var(--surface);
+        transform: translateY(-6px);
+        box-shadow: var(--shadow);
+      }
+
+      .upload-area:hover::before {
+        left: 100%;
+      }
+
+      .upload-area.dragover {
+        border-color: var(--success);
+        background: var(--success-soft);
+        transform: scale(1.02);
+        box-shadow: 0 15px 30px rgba(16, 185, 129, 0.15);
+      }
+
+      .upload-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 28px;
+        background: var(--gradient);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.4s ease;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .upload-area:hover .upload-icon {
+        transform: scale(1.15) rotate(8deg);
+        box-shadow: var(--shadow);
+      }
+
+      .upload-icon svg {
+        width: 38px;
+        height: 38px;
+        color: white;
+      }
+
+      .upload-area input[type="file"] {
+        display: none;
+      }
+
+      .upload-label {
+        font-size: 1.4rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        display: block;
+      }
+
+      .upload-sublabel {
+        font-size: 1.05rem;
+        color: var(--text-secondary);
+        margin-bottom: 24px;
+      }
+
+      .file-types {
+        font-size: 0.9rem;
+        color: var(--text-muted);
+        opacity: 0.8;
+        background: var(--surface);
+        padding: 8px 16px;
+        border-radius: 20px;
+        display: inline-block;
+        border: 1px solid var(--border-soft);
+      }
+
+      .file-name {
+        margin-top: 30px;
+        padding: 20px 24px;
+        background: var(--success-soft);
+        border-radius: 16px;
+        font-size: 1rem;
+        color: var(--text-secondary);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+        display: none;
+        align-items: center;
+        gap: 16px;
+        box-shadow: var(--shadow-soft);
+      }
+
+      .file-name.show {
+        display: flex;
+        animation: slideUp 0.4s ease-out;
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(15px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .file-icon {
+        width: 32px;
+        height: 32px;
+        background: var(--success);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .file-icon svg {
+        width: 18px;
+        height: 18px;
+        color: white;
+      }
+
+      .upload-btn {
+        width: 100%;
+        background: var(--primary);
+        color: white;
+        padding: 20px 36px;
+        border: none;
+        border-radius: 16px;
+        cursor: pointer;
+        font-size: 1.15rem;
+        font-weight: 600;
+        font-family: inherit;
+        margin-top: 40px;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .upload-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.6s ease-out;
+      }
+
+      .upload-btn:hover {
+        background: var(--primary-light);
+        transform: translateY(-3px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+      }
+
+      .upload-btn:hover::before {
+        left: 100%;
+      }
+
+      .upload-btn:active {
+        transform: translateY(-1px);
+      }
+
+      .upload-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid var(--border);
+        border-top: 3px solid var(--primary);
+        border-radius: 50%;
+        animation: spin 1.2s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Responsive design */
+      @media (max-width: 768px) {
+        .container {
+          margin: 10px;
+          border-radius: 24px;
+        }
+
+        .header,
+        .tab-content {
+          padding: 40px 28px;
+        }
+
+        .tabs {
+          padding: 0 28px;
+        }
+
+        .header h1 {
+          font-size: 2.2rem;
+        }
+
+        .upload-area {
+          padding: 50px 28px;
+        }
+
+        .tab-button {
+          padding: 20px 24px;
+          font-size: 1rem;
+        }
+
+        .upload-icon {
+          width: 64px;
+          height: 64px;
+        }
+
+        .upload-icon svg {
+          width: 28px;
+          height: 28px;
+        }
+      }
+
+      /* Elegant focus states */
+      .upload-btn:focus,
+      .tab-button:focus {
+        outline: 2px solid var(--primary-light);
+        outline-offset: 2px;
+      }
+
+      /* Beautiful scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: var(--border-soft);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: var(--text-muted);
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-light);
+      }
+
+      /* Additional hover effects for professional feel */
+      .container {
+        transition: all 0.3s ease;
+      }
+
+      .container:hover {
+        box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08);
+      }
+
+      /* Subtle pattern overlay */
+      .header::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: radial-gradient(
+          circle at 1px 1px,
+          rgba(0, 0, 0, 0.05) 1px,
+          transparent 0
+        );
+        background-size: 20px 20px;
+        opacity: 0.3;
+        pointer-events: none;
+      }
+    </style>
   </head>
   <body>
-    <h1>Available Log Runs</h1>
-    <ul>
-      {% for run in runs %}
-      <li><a href="/logs/{{ run }}">{{ run }}</a></li>
-      {% endfor %}
-    </ul>
+    <div class="container">
+      <div class="tabs">
+        <button class="tab-button active" onclick="openTab('test-paper')">
+          📄 Test Paper
+        </button>
+        <button class="tab-button" onclick="openTab('student-response')">
+          📋 Student Response
+        </button>
+      </div>
+
+      <div id="test-paper" class="tab-content active">
+        <div class="upload-section">
+          <h2>Upload Test Paper for Question Extraction</h2>
+          <form id="question-extraction-form" enctype="multipart/form-data">
+            <div
+              class="upload-area"
+              onclick="document.getElementById('test-paper-file').click()"
+            >
+              <div class="upload-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+              <input
+                type="file"
+                id="test-paper-file"
+                name="pdf_file"
+                accept=".pdf"
+                onchange="displayFileName('test-paper-file', 'test-paper-file-name')"
+              />
+              <label class="upload-label" for="test-paper-file">
+                Drop your CBSE Mathematics PDF here
+              </label>
+              <div class="upload-sublabel">or click to browse your files</div>
+              <div class="file-types">PDF only • Maximum 50MB</div>
+            </div>
+            <div class="file-name" id="test-paper-file-name">
+              <div class="file-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <span></span>
+            </div>
+            <button type="submit" class="upload-btn" id="extract-btn">
+              Extract Questions & Diagrams
+            </button>
+          </form>
+
+          <!-- Results Section -->
+          <div id="results-section" style="display: none; margin-top: 40px">
+            <h3
+              style="
+                color: var(--text-primary);
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+              "
+            >
+              Processing Results
+            </h3>
+            <div id="results-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="student-response" class="tab-content">
+        <div class="upload-section">
+          <h2>Upload Student Response</h2>
+          <form
+            action="/upload_student_response"
+            method="post"
+            enctype="multipart/form-data"
+          >
+            <div
+              class="upload-area"
+              onclick="document.getElementById('student-response-file').click()"
+            >
+              <div class="upload-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="file"
+                id="student-response-file"
+                name="file"
+                accept=".pdf,.doc,.docx"
+                onchange="displayFileName('student-response-file', 'student-response-file-name')"
+              />
+              <label class="upload-label" for="student-response-file">
+                Drop student response here
+              </label>
+              <div class="upload-sublabel">or click to browse your files</div>
+              <div class="file-types">PDF, DOC, DOCX • Maximum 10MB</div>
+            </div>
+            <div class="file-name" id="student-response-file-name">
+              <div class="file-icon">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <span></span>
+            </div>
+            <button type="submit" class="upload-btn">
+              Upload Student Response
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      function openTab(tabName) {
+        // Hide all tab contents
+        const tabContents = document.getElementsByClassName("tab-content");
+        for (let i = 0; i < tabContents.length; i++) {
+          tabContents[i].classList.remove("active");
+        }
+
+        // Remove active class from all tab buttons
+        const tabButtons = document.getElementsByClassName("tab-button");
+        for (let i = 0; i < tabButtons.length; i++) {
+          tabButtons[i].classList.remove("active");
+        }
+
+        // Show selected tab content and activate button
+        document.getElementById(tabName).classList.add("active");
+        event.currentTarget.classList.add("active");
+      }
+
+      function displayFileName(inputId, nameId) {
+        const input = document.getElementById(inputId);
+        const nameDiv = document.getElementById(nameId);
+        const span = nameDiv.querySelector("span");
+
+        if (input.files.length > 0) {
+          const file = input.files[0];
+          const fileSize = (file.size / (1024 * 1024)).toFixed(1);
+          span.textContent = `${file.name} (${fileSize} MB)`;
+          nameDiv.classList.add("show");
+        }
+      }
+
+      // Enhanced drag and drop functionality
+      document.querySelectorAll(".upload-area").forEach((area) => {
+        ["dragenter", "dragover", "dragleave", "drop"].forEach((eventName) => {
+          area.addEventListener(eventName, preventDefaults, false);
+        });
+
+        ["dragenter", "dragover"].forEach((eventName) => {
+          area.addEventListener(
+            eventName,
+            () => area.classList.add("dragover"),
+            false
+          );
+        });
+
+        ["dragleave", "drop"].forEach((eventName) => {
+          area.addEventListener(
+            eventName,
+            () => area.classList.remove("dragover"),
+            false
+          );
+        });
+
+        area.addEventListener("drop", handleDrop, false);
+      });
+
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+
+      function handleDrop(e) {
+        const files = e.dataTransfer.files;
+        const input = e.currentTarget.querySelector('input[type="file"]');
+
+        if (files.length > 0) {
+          input.files = files;
+          const nameId = input.id.replace("-file", "-file-name");
+          displayFileName(input.id, nameId);
+        }
+      }
+
+      // Question Extraction Form Handler
+      document
+        .getElementById("question-extraction-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const formData = new FormData();
+          const fileInput = document.getElementById("test-paper-file");
+          const button = document.getElementById("extract-btn");
+          const resultsSection = document.getElementById("results-section");
+          const resultsContent = document.getElementById("results-content");
+
+          if (!fileInput.files[0]) {
+            alert("Please select a PDF file");
+            return;
+          }
+
+          formData.append("pdf_file", fileInput.files[0]);
+
+          // Update button state
+          const originalText = button.textContent;
+          button.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+            <div class="spinner" style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white;"></div>
+            Processing PDF...
+          </div>
+        `;
+          button.disabled = true;
+
+          try {
+            const response = await fetch("/process-cbse-paper", {
+              method: "POST",
+              body: formData,
+            });
+
+            const result = await response.json();
+
+            // Show results section
+            resultsSection.style.display = "block";
+
+            if (result.success) {
+              resultsContent.innerHTML = `
+              <div style="background: var(--success-soft); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                <h4 style="color: var(--success); margin-bottom: 15px;">✅ Processing Completed Successfully!</h4>
+                <div style="color: var(--text-secondary);">
+                  <p><strong>Message:</strong> ${result.message}</p>
+                  ${
+                    result.final_outputs.total_diagrams
+                      ? `<p><strong>Diagrams Extracted:</strong> ${result.final_outputs.total_diagrams}</p>`
+                      : ""
+                  }
+                  ${
+                    result.final_outputs.questions_extracted
+                      ? `<p><strong>Questions File:</strong> Generated successfully</p>`
+                      : ""
+                  }
+                  ${
+                    result.final_outputs.diagram_mapping
+                      ? `<p><strong>Diagram Mapping:</strong> Generated successfully</p>`
+                      : ""
+                  }
+                </div>
+                <div style="margin-top: 15px;">
+                  <a href="/logs/" target="_blank" style="background: var(--primary); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">
+                    View Detailed Logs →
+                  </a>
+                </div>
+              </div>
+            `;
+            } else {
+              resultsContent.innerHTML = `
+              <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
+                <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Processing Failed</h4>
+                <div style="color: var(--text-secondary);">
+                  ${result.errors.map((error) => `<p>• ${error}</p>`).join("")}
+                </div>
+              </div>
+            `;
+            }
+          } catch (error) {
+            resultsSection.style.display = "block";
+            resultsContent.innerHTML = `
+            <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
+              <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Network Error</h4>
+              <p style="color: var(--text-secondary);">Failed to connect to the server. Please try again.</p>
+            </div>
+          `;
+          } finally {
+            // Reset button
+            button.textContent = originalText;
+            button.disabled = false;
+          }
+        });
+
+      // Student Response Form Handler (existing functionality)
+      document
+        .querySelectorAll("form:not(#question-extraction-form)")
+        .forEach((form) => {
+          form.addEventListener("submit", function (e) {
+            const button = this.querySelector(".upload-btn");
+            const originalText = button.textContent;
+
+            button.innerHTML = `
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+                        <div class="spinner" style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white;"></div>
+                        Uploading...
+                    </div>
+                `;
+            button.disabled = true;
+
+            // Re-enable after 3 seconds (for demo purposes)
+            setTimeout(() => {
+              button.textContent = originalText;
+              button.disabled = false;
+            }, 3000);
+          });
+        });
+
+      // Initialize with beautiful entrance
+      document.addEventListener("DOMContentLoaded", function () {
+        document.querySelector(".container").style.animation =
+          "fadeIn 1s ease-out";
+
+        // Add subtle floating animation
+        setInterval(() => {
+          document.querySelectorAll(".upload-icon").forEach((icon) => {
+            if (!icon.parentElement.matches(":hover")) {
+              icon.style.transform = `translateY(${
+                Math.sin(Date.now() * 0.002) * 2
+              }px)`;
+            }
+          });
+        }, 50);
+      });
+    </script>
   </body>
 </html>

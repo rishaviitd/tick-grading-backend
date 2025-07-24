@@ -593,56 +593,149 @@
 
       <div id="student-response" class="tab-content">
         <div class="upload-section">
-          <h2>Upload Student Response</h2>
-          <form
-            action="/upload_student_response"
-            method="post"
-            enctype="multipart/form-data"
-          >
-            <div
-              class="upload-area"
-              onclick="document.getElementById('student-response-file').click()"
-            >
-              <div class="upload-icon">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
-              </div>
-              <input
-                type="file"
-                id="student-response-file"
-                name="file"
-                accept=".pdf,.doc,.docx"
-                onchange="displayFileName('student-response-file', 'student-response-file-name')"
-              />
-              <label class="upload-label" for="student-response-file">
-                Drop student response here
+          <h2>Process Student Response Images</h2>
+          <form id="response-processing-form">
+            <div class="image-upload-section" style="margin-bottom: 30px">
+              <label
+                style="
+                  display: block;
+                  margin-bottom: 15px;
+                  font-weight: 600;
+                  color: var(--text-primary);
+                "
+              >
+                Upload Student Response Images
               </label>
-              <div class="upload-sublabel">or click to browse your files</div>
-              <div class="file-types">PDF, DOC, DOCX • Maximum 10MB</div>
-            </div>
-            <div class="file-name" id="student-response-file-name">
-              <div class="file-icon">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M5 13l4 4L19 7"
-                  />
-                </svg>
+
+              <!-- File Upload Area -->
+              <div
+                class="upload-area"
+                onclick="document.getElementById('response-images').click()"
+                id="response-upload-area"
+              >
+                <div class="upload-icon">
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  type="file"
+                  id="response-images"
+                  multiple
+                  accept="image/*"
+                  style="display: none"
+                  onchange="handleImageSelection(this)"
+                />
+                <label class="upload-label" for="response-images">
+                  Drop student response images here
+                </label>
+                <div class="upload-sublabel">or click to browse your files</div>
+                <div class="file-types">
+                  JPG, PNG, GIF • Any size • Large images will be automatically
+                  compressed
+                </div>
               </div>
-              <span></span>
+
+              <!-- Image Preview Section -->
+              <div
+                id="image-preview-section"
+                style="display: none; margin-top: 20px"
+              >
+                <h4 style="margin-bottom: 15px; color: var(--text-primary)">
+                  Selected Images:
+                </h4>
+                <div
+                  id="image-preview-grid"
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(
+                      auto-fill,
+                      minmax(200px, 1fr)
+                    );
+                    gap: 15px;
+                  "
+                ></div>
+              </div>
+
+              <!-- Upload Progress -->
+              <div id="upload-progress" style="display: none; margin-top: 20px">
+                <div
+                  style="
+                    background: var(--background-soft);
+                    border-radius: 8px;
+                    padding: 15px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      justify-content: space-between;
+                      margin-bottom: 8px;
+                    "
+                  >
+                    <span
+                      style="font-size: 0.9rem; color: var(--text-secondary)"
+                      >Uploading to Cloudinary...</span
+                    >
+                    <span
+                      id="upload-count"
+                      style="font-size: 0.9rem; color: var(--text-secondary)"
+                      >0/0</span
+                    >
+                  </div>
+                  <div
+                    style="
+                      background: var(--border);
+                      border-radius: 4px;
+                      height: 6px;
+                    "
+                  >
+                    <div
+                      id="upload-progress-bar"
+                      style="
+                        background: var(--primary);
+                        height: 100%;
+                        width: 0%;
+                        border-radius: 4px;
+                        transition: width 0.3s ease;
+                      "
+                    ></div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <button type="submit" class="upload-btn">
-              Upload Student Response
+
+            <button
+              type="submit"
+              class="upload-btn"
+              id="process-response-btn"
+              disabled
+            >
+              Process Response Images
             </button>
           </form>
+
+          <!-- Response Processing Results Section -->
+          <div
+            id="response-results-section"
+            style="display: none; margin-top: 40px"
+          >
+            <h3
+              style="
+                color: var(--text-primary);
+                font-size: 1.5rem;
+                margin-bottom: 20px;
+              "
+            >
+              Processing Results
+            </h3>
+            <div id="response-results-content"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -819,29 +912,268 @@
           }
         });
 
-      // Student Response Form Handler (existing functionality)
-      document
-        .querySelectorAll("form:not(#question-extraction-form)")
-        .forEach((form) => {
-          form.addEventListener("submit", function (e) {
-            const button = this.querySelector(".upload-btn");
-            const originalText = button.textContent;
+      // Global variables for image handling
+      let selectedImages = [];
+      let uploadedUrls = [];
 
-            button.innerHTML = `
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-                        <div class="spinner" style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white;"></div>
-                        Uploading...
-                    </div>
-                `;
-            button.disabled = true;
+      // Handle image selection
+      function handleImageSelection(input) {
+        const files = Array.from(input.files);
+        selectedImages = files;
 
-            // Re-enable after 3 seconds (for demo purposes)
-            setTimeout(() => {
-              button.textContent = originalText;
-              button.disabled = false;
-            }, 3000);
-          });
+        if (files.length > 0) {
+          displayImagePreviews(files);
+          document.getElementById("process-response-btn").disabled = false;
+        } else {
+          document.getElementById("process-response-btn").disabled = true;
+        }
+      }
+
+      // Display image previews
+      function displayImagePreviews(files) {
+        const previewSection = document.getElementById("image-preview-section");
+        const previewGrid = document.getElementById("image-preview-grid");
+
+        previewGrid.innerHTML = "";
+
+        files.forEach((file, index) => {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            const previewDiv = document.createElement("div");
+            previewDiv.style.cssText = `
+              border: 1px solid var(--border);
+              border-radius: 8px;
+              padding: 10px;
+              background: var(--background-soft);
+              position: relative;
+            `;
+
+            previewDiv.innerHTML = `
+              <img src="${e.target.result}" alt="Preview ${
+              index + 1
+            }" style="width: 100%; height: 150px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;" />
+              <div style="font-size: 0.8rem; color: var(--text-secondary);">
+                ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)
+              </div>
+              <button onclick="removeImage(${index})" style="
+                position: absolute;
+                top: 5px;
+                right: 5px;
+                background: rgba(220, 38, 38, 0.9);
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 24px;
+                height: 24px;
+                cursor: pointer;
+                font-size: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+              ">×</button>
+            `;
+
+            previewGrid.appendChild(previewDiv);
+          };
+          reader.readAsDataURL(file);
         });
+
+        previewSection.style.display = "block";
+      }
+
+      // Remove image from selection
+      function removeImage(index) {
+        selectedImages.splice(index, 1);
+        if (selectedImages.length > 0) {
+          displayImagePreviews(selectedImages);
+        } else {
+          document.getElementById("image-preview-section").style.display =
+            "none";
+          document.getElementById("process-response-btn").disabled = true;
+        }
+      }
+
+      // Upload images to Cloudinary
+      async function uploadToCloudinary(files) {
+        const uploadProgress = document.getElementById("upload-progress");
+        const progressBar = document.getElementById("upload-progress-bar");
+        const uploadCount = document.getElementById("upload-count");
+
+        uploadProgress.style.display = "block";
+        uploadedUrls = [];
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          // Update progress
+          uploadCount.textContent = `${i + 1}/${files.length}`;
+          progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
+
+          try {
+            // Create FormData for file upload
+            const formData = new FormData();
+            formData.append("file", file);
+
+            // Upload to Cloudinary via our backend (for security)
+            const response = await fetch("/upload-to-cloudinary", {
+              method: "POST",
+              body: formData,
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              uploadedUrls.push(result.url);
+            } else {
+              throw new Error(`Failed to upload ${file.name}`);
+            }
+          } catch (error) {
+            console.error("Upload error:", error);
+            throw error;
+          }
+        }
+
+        uploadProgress.style.display = "none";
+        return uploadedUrls;
+      }
+
+      // Response Processing Form Handler
+      document
+        .getElementById("response-processing-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const button = document.getElementById("process-response-btn");
+          const resultsSection = document.getElementById(
+            "response-results-section"
+          );
+          const resultsContent = document.getElementById(
+            "response-results-content"
+          );
+
+          if (selectedImages.length === 0) {
+            alert("Please select at least one image");
+            return;
+          }
+
+          // Update button state
+          const originalText = button.textContent;
+          button.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
+              <div class="spinner" style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white;"></div>
+              Uploading & Processing Images...
+            </div>
+          `;
+          button.disabled = true;
+
+          try {
+            // First, upload images to Cloudinary
+            const urls = await uploadToCloudinary(selectedImages);
+
+            // Then, send URLs to crop-margins endpoint
+            const response = await fetch("/crop-margins", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ urls: urls }),
+            });
+
+            const result = await response.json();
+
+            // Show results section
+            resultsSection.style.display = "block";
+
+            if (response.ok) {
+              resultsContent.innerHTML = `
+                <div style="background: var(--success-soft); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                  <h4 style="color: var(--success); margin-bottom: 15px;">✅ Response Processing Completed!</h4>
+                  <div style="color: var(--text-secondary);">
+                    <p><strong>Message:</strong> ${result.message}</p>
+                    <p><strong>Run ID:</strong> ${result.run_id}</p>
+                    <p><strong>Images Processed:</strong> ${urls.length}</p>
+                  </div>
+                  <div style="margin-top: 15px;">
+                    <button onclick="viewResponseResults('${result.run_id}')" style="background: var(--primary); color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; margin-right: 10px;">
+                      View Results →
+                    </button>
+                    <a href="/logs/" target="_blank" style="background: var(--text-muted); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">
+                      View Logs →
+                    </a>
+                  </div>
+                </div>
+              `;
+            } else {
+              resultsContent.innerHTML = `
+                <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
+                  <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Processing Failed</h4>
+                  <div style="color: var(--text-secondary);">
+                    <p><strong>Error:</strong> ${
+                      result.detail || "Unknown error occurred"
+                    }</p>
+                  </div>
+                </div>
+              `;
+            }
+          } catch (error) {
+            resultsSection.style.display = "block";
+            resultsContent.innerHTML = `
+              <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
+                <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Upload/Processing Error</h4>
+                <p style="color: var(--text-secondary);">${
+                  error.message ||
+                  "Failed to upload or process images. Please try again."
+                }</p>
+              </div>
+            `;
+          } finally {
+            // Reset button
+            button.textContent = originalText;
+            button.disabled = false;
+          }
+        });
+
+      // Function to view response results
+      async function viewResponseResults(runId) {
+        try {
+          const response = await fetch(`/response-processing/${runId}`);
+          const result = await response.json();
+
+          if (response.ok) {
+            // Create a modal or expand the results section to show the data
+            const resultsContent = document.getElementById(
+              "response-results-content"
+            );
+            const responses = result.responses;
+
+            let responsesHtml =
+              '<div style="margin-top: 20px;"><h5 style="margin-bottom: 15px;">Processed Responses:</h5>';
+            responsesHtml +=
+              '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">';
+
+            Object.entries(responses).forEach(([questionId, imageUrl]) => {
+              responsesHtml += `
+                <div style="border: 1px solid var(--border); border-radius: 8px; padding: 15px; background: var(--background-soft);">
+                  <h6 style="margin-bottom: 10px; color: var(--text-primary);">Question ${questionId}</h6>
+                  <img src="${imageUrl}" alt="Question ${questionId} response" style="width: 100%; height: auto; border-radius: 4px; border: 1px solid var(--border-soft);" />
+                  <div style="margin-top: 10px;">
+                    <a href="${imageUrl}" target="_blank" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">
+                      View Full Size →
+                    </a>
+                  </div>
+                </div>
+              `;
+            });
+
+            responsesHtml += "</div></div>";
+
+            resultsContent.innerHTML += responsesHtml;
+          } else {
+            alert("Failed to load response results");
+          }
+        } catch (error) {
+          alert("Error loading response results");
+        }
+      }
 
       // Initialize with beautiful entrance
       document.addEventListener("DOMContentLoaded", function () {

@@ -210,6 +210,28 @@ class Question(BaseModel):
 
 
 # =============================================================================
+# RESPONSE PROCESSING SCHEMA
+# =============================================================================
+
+class ResponseProcessingResult(BaseModel):
+    """Schema for Response Processing (crop-margins) results"""
+    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    run_id: str = Field(..., description="Unique run identifier")
+    
+    # Simple mapping: question_id -> image_url
+    responses: Dict[str, str] = Field(..., description="Mapping of question_id to image_url")
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+
+
+# =============================================================================
 # MAIN PIPELINE SCHEMA
 # =============================================================================
 
@@ -267,7 +289,8 @@ COLLECTION_NAMES = {
     "diagram_mapping": "diagram_mapping_results", 
     "question_extraction": "question_extraction_results",
     "marks_mapping": "marks_mapping_results",
-    "questions": "questions"
+    "questions": "questions",
+    "response_processing": "response_processing_results"
 }
 
 
@@ -302,5 +325,9 @@ INDEXES = {
         [("run_id", 1)],  # Primary lookup by run_id
         [("question_identifier", 1)],  # Secondary lookup by question identifier
         [("created_at", -1)]  # Sort by creation time
+    ],
+    "response_processing_results": [
+        [("run_id", 1)],  # Primary lookup by run_id
+        [("created_at", -1)],  # Sort by creation time
     ]
 } 

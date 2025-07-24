@@ -12,6 +12,8 @@ from .question_parsing.question_extraction import (
     GEMINI_CLIENT_OK
 )
 from .logging import UnifiedLogger, LogType, LogViewer
+from database.connection import pipeline_db, initialize_database
+from database.schema import ResponseProcessingResult
 import cv2
 import numpy as np
 import uuid
@@ -38,6 +40,17 @@ app = FastAPI()
 app.mount("/static", StaticFiles(directory=str(Path(__file__).parent / "static")), name="static")
 app.mount("/logs/static", StaticFiles(directory=str(LOGS_ROOT)), name="logs_static")
 templates = Jinja2Templates(directory=str(Path(__file__).parent / "templates"))
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database connection on startup"""
+    await initialize_database()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close database connection on shutdown"""
+    from database.connection import close_database
+    await close_database()
 
 class CropRequest(BaseModel):
     urls: List[str]
@@ -85,7 +98,7 @@ async def health_check():
 async def demo_page(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-@app.post('/crop-margins', response_model=UploadsResponse)
+@app.post('/crop-margins')
 async def crop_margins(request: CropRequest):
     print(f"[crop-margins] Received URLs: {request.urls}")
     if not request.urls:
@@ -133,6 +146,47 @@ async def crop_margins(request: CropRequest):
                 # Log extracted answer labels from margin for this page
                 labels = [b.text for b in cr.boxes]
                 logger.log_step(run_id, "Extract Answers", {"page": idx}, labels)
+                
+                # Create and save Textract annotated image
+                cv_img = cv2.imdecode(np.frombuffer(content, np.uint8), cv2.IMREAD_COLOR)
+                if cv_img is not None:
+                    # Create margin-cropped image for annotation
+                    h, w = cv_img.shape[:2]
+                    if 0 < margin < w:
+                        cropped_img = cv_img[:, :margin].copy()
+                    else:
+                        cropped_img = cv_img.copy()
+                    
+                    # Create annotated image showing Textract results
+                    annotated_img = cropped_img.copy()
+                    
+                    # Draw boxes and text from Textract results
+                    for i, box in enumerate(cr.boxes):
+                        x1, y1, x2, y2 = box.coordinates
+                        # Draw bounding box (green for filtered/outer boxes)
+                        cv2.rectangle(annotated_img, (x1, y1), (x2, y2), (0, 255, 0), 3)
+                        # Add text label
+                        label = f"{box.text}"
+                        cv2.putText(annotated_img, label, (x1, max(y1-5, 10)), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+                    
+                    # Add filtering statistics to the image
+                    stats_text = f"Filtered: {len(cr.boxes)} ANS boxes kept"
+                    cv2.putText(annotated_img, stats_text, (10, 30), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+                    
+                    # Save the annotated image
+                    logger.save_image(run_id, annotated_img, f'page_{idx}_textract_annotated.jpg', 'textract_results')
+                    
+                    # Log Textract statistics
+                    textract_stats = {
+                        "total_boxes": len(cr.boxes),
+                        "detected_texts": [b.text for b in cr.boxes],
+                        "margin_width": margin,
+                        "image_dimensions": f"{h}x{w}"
+                    }
+                    logger.log_step(run_id, f"Textract Results Page {idx}", textract_stats, "Saved annotated image")
+                
             except Exception as exc:
                 print(f"[crop-margins] process_crop_for_image error on page {idx}: {exc}", exc_info=True)
                 logger.log_error(run_id, f"Process crop error on page {idx}", exc)
@@ -212,23 +266,86 @@ async def crop_margins(request: CropRequest):
         uploads_meta = upload_crops_to_cloudinary(merged_crops)
         logger.log_step(run_id, "Upload to Cloudinary", f"{len(merged_crops)} items", [u['image_url'] for u in uploads_meta])
         
+        # Create responses dictionary for MongoDB
+        responses_dict = {u['question_id']: u['image_url'] for u in uploads_meta}
+        
+        # Save to MongoDB
+        response_result = ResponseProcessingResult(
+            run_id=run_id,
+            responses=responses_dict
+        )
+        
+        # Initialize database if not already connected
+        if not pipeline_db.db_manager.is_connected():
+            await initialize_database()
+        
+        # Save to database
+        save_success = await pipeline_db.save_response_processing(response_result)
+        if not save_success:
+            logger.log_error(run_id, "Failed to save response processing results to database")
+            raise HTTPException(status_code=500, detail="Failed to save results to database")
+        
         # Complete the run successfully
         logger.complete_run(run_id, success=True)
         
-        # Build and return final response
-        return UploadsResponse(
-            uploads=[
-                AnswerUpload(
-                    question_id=u['question_id'],
-                    image_url=u['image_url']
-                ) for u in uploads_meta
-            ]
-        )
+        # Return success message instead of the data
+        return {"message": "Response processing completed and saved to database", "run_id": run_id}
         
     except Exception as exc:
         logger.log_error(run_id, "Unexpected error in crop_margins", exc)
         logger.complete_run(run_id, success=False)
         raise
+
+
+@app.get('/response-processing/{run_id}')
+async def get_response_processing(run_id: str):
+    """Get response processing results by run_id"""
+    try:
+        # Initialize database if not already connected
+        if not pipeline_db.db_manager.is_connected():
+            await initialize_database()
+        
+        # Get response processing results from database
+        collection = pipeline_db.db_manager.get_collection("response_processing_results")
+        if collection is None:
+            raise HTTPException(status_code=500, detail="Database collection not found")
+        
+        result = await collection.find_one({"run_id": run_id})
+        if not result:
+            raise HTTPException(status_code=404, detail="Response processing results not found")
+        
+        # Convert ObjectId to string for JSON serialization
+        result["_id"] = str(result["_id"])
+        result["created_at"] = result["created_at"].isoformat()
+        
+        return result
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve response processing results: {str(e)}")
+
+
+@app.post('/upload-to-cloudinary')
+async def upload_to_cloudinary(file: UploadFile = File(...)):
+    """Upload a single image to Cloudinary and return the URL"""
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="Only image files are allowed")
+        
+        # Read file content
+        file_content = await file.read()
+        
+        # Upload to Cloudinary using the existing utility function
+        from .response_processing.utils import upload_single_image_to_cloudinary
+        
+        image_url = upload_single_image_to_cloudinary(file_content)
+        
+        return {"url": image_url}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload image: {str(e)}")
 
 # =============================================================================
 # NEW QUESTION EXTRACTION ENDPOINTS

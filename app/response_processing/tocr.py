@@ -71,9 +71,13 @@ def extract_answers_from_margin(margin_image_bytes: bytes) -> List[str]:
         )
     )
     raw = response.text
-    print(f"[extract_answers_from_margin] Raw Gemini output: {raw}")
+    print(f"\n{'='*60}")
+    print(f"🧠 GEMINI RESPONSE")
+    print(f"{'='*60}")
+    print(f"📄 Raw response: {raw}")
+    print(f"{'='*60}")
     
-    # Log the response
+    # Log the response to file
     log_dir = Path(__file__).parent.parent.parent / 'logs'
     log_dir.mkdir(parents=True, exist_ok=True)
     log_file = log_dir / 'gemini_margin.log'
@@ -87,10 +91,13 @@ def extract_answers_from_margin(margin_image_bytes: bytes) -> List[str]:
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as e:
+        print(f"❌ Failed to parse Gemini output as JSON: {e}")
+        print(f"📄 Raw output: {raw}")
         raise ValueError(f"Failed to parse Gemini output as JSON: {e}\nRaw output: {raw}")
     
     answers = data.get("answers")
-    print(f"[extract_answers_from_margin] Parsed answers: {answers}")
+    print(f"✅ Parsed answers: {answers}")
+    print(f"{'='*60}\n")
     
     if not isinstance(answers, list):
         raise ValueError(f"Gemini response JSON missing 'answers' list: {data}")
@@ -114,15 +121,38 @@ def merge_answers_with_ocr(answers: List[str], ocr_boxes: List[Dict]) -> List[Di
     Raises:
         ValueError if the lengths differ.
     """
+    print(f"\n{'='*60}")
+    print(f"🔗 MERGING DETAILS")
+    print(f"{'='*60}")
+    
     if len(answers) != len(ocr_boxes):
+        print(f"❌ MISMATCH: Gemini answers ({len(answers)}) != OCR boxes ({len(ocr_boxes)})")
         raise ValueError(
             f"Mismatch between number of Gemini answers ({len(answers)}) and OCR boxes ({len(ocr_boxes)})"
         )
+    
+    print(f"✅ MATCH: {len(answers)} Gemini answers and {len(ocr_boxes)} OCR boxes")
+    print(f"\n📋 MERGING TABLE:")
+    print(f"{'='*60}")
+    print(f"{'Position':<8} {'OCR Text':<15} {'→':<3} {'Gemini Label':<15} {'Coordinates':<20}")
+    print(f"{'='*60}")
+    
     merged = []
-    for label, box in zip(answers, ocr_boxes):
-        merged.append({
-            "coords": box.get("coords"),
-            # Override the raw OCR text with the cleaned label
-            "text": label
-        })
+    for i, (label, box) in enumerate(zip(answers, ocr_boxes)):
+        coords = box.get("coords")
+        ocr_text = box.get("text", "")
+        merged_item = {
+            "coords": coords,
+            "text": label  # Override the raw OCR text with the cleaned label
+        }
+        merged.append(merged_item)
+        
+        # Display the merging process
+        coord_str = f"[{coords[0]},{coords[1]},{coords[2]},{coords[3]}]" if coords else "N/A"
+        print(f"{i+1:<8} {ocr_text:<15} {'→':<3} {label:<15} {coord_str:<20}")
+    
+    print(f"{'='*60}")
+    print(f"✅ Successfully merged {len(merged)} items")
+    print(f"{'='*60}\n")
+    
     return merged 

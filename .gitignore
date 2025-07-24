@@ -38,4 +38,19 @@ logs/*
 
 # OS specific files
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Model weights (too large for git)
+app/response_processing/image_enhancement/weights/*.h5
+app/response_processing/image_enhancement/weights/*.pt
+app/response_processing/image_enhancement/weights/*.pth
+app/response_processing/image_enhancement/weights/*.ckpt
+app/response_processing/image_enhancement/weights/*.safetensors
+app/question_parsing/models/*.pt
+app/question_parsing/models/*.pth
+app/question_parsing/models/*.ckpt
+app/question_parsing/models/*.safetensors
+
+# Keep the weights directory structure but ignore the actual files
+!app/response_processing/image_enhancement/weights/.gitkeep
+!app/question_parsing/models/.gitkeep 

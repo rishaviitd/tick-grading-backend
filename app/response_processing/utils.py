@@ -489,8 +489,12 @@ def upload_crops_to_cloudinary(
     Returns:
         [{'question_id': id, 'image_url': url, 'ocr_text': text}, ...]
     """
+    from app.utils.identifier_normalizer import normalize_identifier
+    
     uploads: List[Dict[str, str]] = []
     for qid, img, text in crops:
+        # Normalize the question identifier
+        normalized_qid = normalize_identifier(qid)
         # Convert RGB image back to BGR for OpenCV
         bgr_img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
         success, buf = cv2.imencode('.jpg', bgr_img)
@@ -503,7 +507,7 @@ def upload_crops_to_cloudinary(
             format='jpg'
         )
         uploads.append({
-            'question_id': qid,
+            'question_id': normalized_qid,
             'image_url': result.get('secure_url', ''),
             'ocr_text': text
         })

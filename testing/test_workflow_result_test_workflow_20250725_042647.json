@@ -1,0 +1,61 @@
+{
+  "run_id": "test_workflow_20250725_042647",
+  "generated_at": "2025-07-24T22:56:47.461801",
+  "metadata": {
+    "total_questions": 2,
+    "total_responses": 2,
+    "total_mappings": 2
+  },
+  "questions": [
+    {
+      "id": "6882ba2f60e572b824221b64",
+      "assignment_id": "test_assignment_456",
+      "question_identifier": "Q1",
+      "primary_question": "What is 2+2?",
+      "primary_marks": "5",
+      "question_type": "numerical"
+    },
+    {
+      "id": "6882ba2f60e572b824221b65",
+      "assignment_id": "test_assignment_456",
+      "question_identifier": "Q2",
+      "primary_question": "What is the capital of France?",
+      "primary_marks": "5",
+      "question_type": "text"
+    }
+  ],
+  "student_responses": {
+    "id": "6882ba2f60e572b824221b63",
+    "student_id": "test_student_123",
+    "assignment_id": "test_assignment_456",
+    "run_id": "test_workflow_20250725_042647",
+    "responses": [
+      {
+        "question_identifier": "Q1",
+        "cloudinary_url": "https://res.cloudinary.com/test/image1.jpg"
+      },
+      {
+        "question_identifier": "Q2",
+        "cloudinary_url": "https://res.cloudinary.com/test/image2.jpg"
+      }
+    ]
+  },
+  "question_response_mappings": [
+    {
+      "id": "6882ba2f60e572b824221b67",
+      "student_id": "test_student_123",
+      "assignment_id": "test_assignment_456",
+      "run_id": "test_workflow_20250725_042647",
+      "question_identifier": "Q1",
+      "response_cloudinary_url": "https://res.cloudinary.com/test/image1.jpg"
+    },
+    {
+      "id": "6882ba2f60e572b824221b69",
+      "student_id": "test_student_123",
+      "assignment_id": "test_assignment_456",
+      "run_id": "test_workflow_20250725_042647",
+      "question_identifier": "Q2",
+      "response_cloudinary_url": "https://res.cloudinary.com/test/image2.jpg"
+    }
+  ]
+}

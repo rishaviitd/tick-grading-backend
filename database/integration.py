@@ -11,9 +11,13 @@ from datetime import datetime
 
 from .connection import pipeline_db, initialize_database
 from .schema import (
+    # Core business logic schemas
+    Teacher, Student, Assignment, Question, StudentResponse, StudentAssignmentResponse, QuestionResponseMapping,
+    
+    # Legacy pipeline processing schemas
     PipelineResult, DiagramExtractionResult, DiagramMappingResult,
     QuestionExtractionResult, MarksMappingResult, ProcessingStep,
-    DiagramMappingEntry, MarksMappingEntry, Question
+    DiagramMappingEntry, MarksMappingEntry
 )
 
 
@@ -205,8 +209,8 @@ class PipelineDatabaseIntegration:
         
         return await pipeline_db.save_marks_mapping(mapping_result)
     
-    async def combine_and_save_questions(self, run_id: str) -> bool:
-        """Combine data from all steps and save questions to database"""
+    async def combine_and_save_questions(self, run_id: str, assignment_title: str = None, assignment_marks: int = None) -> bool:
+        """Combine data from all steps and save questions to database with assignment"""
         if not await self.initialize():
             return False
         
@@ -230,21 +234,40 @@ class PipelineDatabaseIntegration:
                     print("  - Marks mapping data is missing")
                 return False
             
+            # Create assignment first
+            assignment_id = await self.create_assignment(run_id, assignment_title, assignment_marks)
+            if not assignment_id:
+                print(f"Failed to create assignment for run_id: {run_id}")
+                return False
+            
+            print(f"Created assignment with ID: {assignment_id}")
+            
             # Parse questions from markdown
             questions = self._parse_questions_from_markdown(question_extraction["questions_markdown"])
             
-            # Combine and save each question
+            # Combine and save each question with assignment
             saved_count = 0
+            question_ids = []
             combined_questions = []
+            
             for question_data in questions:
                 combined_question = self._combine_question_data(
-                    question_data, marks_mapping, diagram_mapping, run_id
+                    question_data, marks_mapping, diagram_mapping, run_id, assignment_id
                 )
                 if combined_question:
-                    success = await pipeline_db.save_question(combined_question)
-                    if success:
+                    # Save question using the new method that includes assignment_id
+                    question_id = await self.save_question_with_assignment(
+                        combined_question.dict(by_alias=True), assignment_id, run_id
+                    )
+                    if question_id:
                         saved_count += 1
+                        question_ids.append(question_id)
                         combined_questions.append(combined_question.dict(by_alias=True))
+            
+            # Update assignment with question IDs
+            if question_ids:
+                await self.update_assignment_questions(assignment_id, question_ids)
+                print(f"Updated assignment {assignment_id} with {len(question_ids)} questions")
             
             # Save to logs folder using the logger
             if combined_questions:
@@ -326,17 +349,22 @@ class PipelineDatabaseIntegration:
     
     def _parse_questions_from_markdown(self, markdown_content: str) -> List[Dict[str, Any]]:
         """Parse questions from markdown content"""
+        from app.utils.identifier_normalizer import normalize_identifier
+        
         questions = []
         
         # Split by [####] to get individual questions
         question_chunks = markdown_content.split("[####]")
         
-        for i, chunk in enumerate(question_chunks):
+        question_number = 1  # Start from 1 for actual questions
+        for chunk in question_chunks:
             chunk = chunk.strip()
             if not chunk:
                 continue
             
-            question_identifier = str(i + 1)
+            # Create identifier and normalize it (strip ANS- prefix for internal use)
+            raw_identifier = f"ANS-{question_number}"
+            question_identifier = normalize_identifier(raw_identifier)
             
             # Check for internal choice (we'll determine case study later from marks mapping)
             if "[%OR%]" in chunk:
@@ -359,6 +387,8 @@ class PipelineDatabaseIntegration:
                     "primary_question": chunk,
                     "secondary_question": None
                 })
+            
+            question_number += 1  # Increment for next question
         
         return questions
     
@@ -367,10 +397,13 @@ class PipelineDatabaseIntegration:
     def _combine_question_data(self, question_data: Dict[str, Any], 
                               marks_mapping: Dict[str, Any], 
                               diagram_mapping: Dict[str, Any],
-                              run_id: str) -> Optional[Question]:
+                              run_id: str, assignment_id: str) -> Optional[Question]:
         """Combine question data with marks and diagram mapping"""
+        from app.utils.identifier_normalizer import normalize_identifier
+        
         try:
-            question_identifier = question_data["question_identifier"]
+            # Normalize the question identifier
+            question_identifier = normalize_identifier(question_data["question_identifier"])
             question_key = f"question-{question_identifier}"
             
             # Get marks data
@@ -403,6 +436,7 @@ class PipelineDatabaseIntegration:
             
             # Create Question object
             question = Question(
+                assignment_id=assignment_id,
                 run_id=run_id,
                 question_identifier=question_identifier,
                 has_internal_choice=has_internal_choice,
@@ -443,12 +477,16 @@ class PipelineDatabaseIntegration:
     def _process_diagrams(self, question_identifier: str, diagram_mapping: Dict[str, Any], 
                          has_internal_choice: bool) -> Tuple[Optional[str], Optional[str]]:
         """Process diagram mapping for a question"""
+        from app.utils.identifier_normalizer import normalize_identifier
+        
         primary_diagram_url = None
         secondary_diagram_url = None
         
-        # Find diagrams for this question
+        # Find diagrams for this question (normalize both identifiers for comparison)
+        normalized_question_id = normalize_identifier(question_identifier)
         for figure_key, figure_data in diagram_mapping.items():
-            if figure_data.get("question_identifier") == question_identifier:
+            figure_question_id = normalize_identifier(figure_data.get("question_identifier", ""))
+            if figure_question_id == normalized_question_id:
                 cloudinary_url = figure_data.get("cloudinary_url")
                 choice_location = figure_data.get("choice_location", "null")
                 
@@ -531,6 +569,184 @@ class PipelineDatabaseIntegration:
         except Exception as e:
             print(f"Failed to update pipeline data: {e}")
             return False
+    
+    # =============================================================================
+    # CORE BUSINESS LOGIC METHODS
+    # =============================================================================
+    
+    async def create_teacher(self, name: str, class_name: str, board: str) -> Optional[str]:
+        """Create a new teacher and return the teacher ID"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            teacher = Teacher(
+                name=name,
+                class_name=class_name,
+                board=board,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            success = await pipeline_db.save_teacher(teacher)
+            if success:
+                return str(teacher.id)
+            return None
+            
+        except Exception as e:
+            print(f"Error creating teacher: {e}")
+            return None
+    
+    async def create_student(self, name: str) -> Optional[str]:
+        """Create a new student and return the student ID"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            student = Student(
+                name=name,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            success = await pipeline_db.save_student(student)
+            if success:
+                return str(student.id)
+            return None
+            
+        except Exception as e:
+            print(f"Error creating student: {e}")
+            return None
+    
+    async def create_assignment(self, run_id: str, title: str = None, total_marks: int = None) -> Optional[str]:
+        """Create a new assignment and return the assignment ID"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            # Use default values if not provided
+            if title is None:
+                title = f"Assignment {run_id}"
+            if total_marks is None:
+                total_marks = 100
+            
+            assignment = Assignment(
+                run_id=run_id,
+                title=title,
+                total_marks=total_marks,
+                questions=[],
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            assignment_id = await pipeline_db.save_assignment(assignment)
+            return assignment_id
+            
+        except Exception as e:
+            print(f"Error creating assignment: {e}")
+            return None
+    
+    async def save_question_with_assignment(self, question_data: Dict[str, Any], assignment_id: str, run_id: str) -> Optional[str]:
+        """Save a question with assignment_id and return the question ID"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            question = Question(
+                assignment_id=assignment_id,
+                run_id=run_id,
+                question_identifier=question_data["question_identifier"],
+                has_internal_choice=question_data["has_internal_choice"],
+                primary_question=question_data["primary_question"],
+                secondary_question=question_data.get("secondary_question"),
+                primary_diagram_url=question_data.get("primary_diagram_url"),
+                secondary_diagram_url=question_data.get("secondary_diagram_url"),
+                table_url=question_data.get("table_url"),
+                primary_marks=question_data["primary_marks"],
+                secondary_marks=question_data.get("secondary_marks"),
+                question_type=question_data["question_type"],
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            question_id = await pipeline_db.save_question(question)
+            return question_id
+            
+        except Exception as e:
+            print(f"Error saving question: {e}")
+            return None
+    
+    async def update_assignment_questions(self, assignment_id: str, question_ids: List[str]) -> bool:
+        """Update the questions array in an assignment"""
+        if not await self.initialize():
+            return False
+        
+        try:
+            success = await pipeline_db.update_assignment_questions(assignment_id, question_ids)
+            return success
+            
+        except Exception as e:
+            print(f"Error updating assignment questions: {e}")
+            return False
+    
+    async def save_student_assignment_response(self, student_id: str, assignment_id: str, 
+                                             run_id: str, student_responses: List[StudentResponse]) -> Optional[str]:
+        """Save student assignment response and return the response ID"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            response = StudentAssignmentResponse(
+                student_id=student_id,
+                assignment_id=assignment_id,
+                run_id=run_id,
+                student_responses=student_responses,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            success = await pipeline_db.save_student_assignment_response(response)
+            if success:
+                return str(response.id)
+            return None
+            
+        except Exception as e:
+            print(f"Error saving student assignment response: {e}")
+            return None
+    
+    async def create_question_response_mapping(self, student_id: str, assignment_id: str, run_id: str,
+                                             question_data: Dict[str, Any], response_url: str) -> Optional[str]:
+        """Create a question response mapping and return the mapping ID"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            mapping = QuestionResponseMapping(
+                student_id=student_id,
+                assignment_id=assignment_id,
+                run_id=run_id,
+                question_identifier=question_data["question_identifier"],
+                has_internal_choice=question_data["has_internal_choice"],
+                primary_question=question_data["primary_question"],
+                secondary_question=question_data.get("secondary_question"),
+                primary_diagram_url=question_data.get("primary_diagram_url"),
+                secondary_diagram_url=question_data.get("secondary_diagram_url"),
+                table_url=question_data.get("table_url"),
+                primary_marks=question_data["primary_marks"],
+                secondary_marks=question_data.get("secondary_marks"),
+                question_type=question_data["question_type"],
+                response_cloudinary_url=response_url,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
+            )
+            
+            # Save mapping and get the inserted ID
+            mapping_id = await pipeline_db.save_question_response_mapping(mapping)
+            return mapping_id
+            
+        except Exception as e:
+            print(f"Error creating question response mapping: {e}")
+            return None
 
 
 # Global integration instance

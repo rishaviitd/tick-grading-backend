@@ -1,0 +1,73 @@
+{
+  "run_id": "test_simple_final_json_001",
+  "generated_at": "2024-01-01T00:00:00Z",
+  "metadata": {
+    "total_questions": 1,
+    "total_responses": 1,
+    "total_mappings": 1
+  },
+  "teacher": {
+    "id": "6882b05580879faae7b67d8d",
+    "name": "Test Teacher",
+    "class_name": "10",
+    "board": "CBSE"
+  },
+  "student": {
+    "id": "6882b8fd8f4d1273b306eabf",
+    "name": "Test Student"
+  },
+  "assignment": {
+    "id": "6882b8fd8f4d1273b306eac0",
+    "run_id": "test_simple_final_json_001",
+    "questions": [
+      "6882b8fd8f4d1273b306eac1"
+    ]
+  },
+  "questions": [
+    {
+      "id": "6882b8fd8f4d1273b306eac1",
+      "assignment_id": "6882b8fd8f4d1273b306eac0",
+      "question_identifier": "1",
+      "has_internal_choice": false,
+      "primary_question": "What is 2 + 2?",
+      "secondary_question": null,
+      "primary_diagram_url": null,
+      "secondary_diagram_url": null,
+      "table_url": null,
+      "primary_marks": "1 mark",
+      "secondary_marks": null,
+      "question_type": "MCQ"
+    }
+  ],
+  "student_responses": {
+    "id": "6882b8fd8f4d1273b306eac2",
+    "student_id": "6882b8fd8f4d1273b306eabf",
+    "assignment_id": "6882b8fd8f4d1273b306eac0",
+    "run_id": "test_simple_final_json_001",
+    "responses": [
+      {
+        "question_identifier": "1",
+        "cloudinary_url": "https://example.com/response1.jpg"
+      }
+    ]
+  },
+  "question_response_mappings": [
+    {
+      "id": "6882b8fd8f4d1273b306eac4",
+      "student_id": "6882b8fd8f4d1273b306eabf",
+      "assignment_id": "6882b8fd8f4d1273b306eac0",
+      "run_id": "test_simple_final_json_001",
+      "question_identifier": "1",
+      "has_internal_choice": false,
+      "primary_question": "What is 2 + 2?",
+      "secondary_question": null,
+      "primary_diagram_url": null,
+      "secondary_diagram_url": null,
+      "table_url": null,
+      "primary_marks": "1 mark",
+      "secondary_marks": null,
+      "question_type": "MCQ",
+      "response_cloudinary_url": "https://example.com/response1.jpg"
+    }
+  ]
+}

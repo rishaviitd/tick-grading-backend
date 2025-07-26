@@ -5,9 +5,16 @@ This module provides MongoDB integration for storing CBSE processing pipeline re
 """
 
 from .schema import (
+    # Core business logic schemas
+    Teacher, Student, Assignment, Question, StudentResponse, StudentAssignmentResponse, QuestionResponseMapping,
+    
+    # Legacy pipeline processing schemas
     PipelineResult, DiagramExtractionResult, DiagramMappingResult,
     QuestionExtractionResult, MarksMappingResult, ProcessingStep,
-    DiagramMappingEntry, MarksMappingEntry, COLLECTION_NAMES, INDEXES
+    DiagramMappingEntry, MarksMappingEntry,
+    
+    # Collection names
+    COLLECTION_NAMES
 )
 
 from .connection import (
@@ -21,7 +28,16 @@ from .integration import (
 )
 
 __all__ = [
-    # Schema classes
+    # Core business logic schemas
+    "Teacher",
+    "Student", 
+    "Assignment",
+    "Question",
+    "StudentResponse",
+    "StudentAssignmentResponse",
+    "QuestionResponseMapping",
+    
+    # Legacy pipeline processing schemas
     "PipelineResult",
     "DiagramExtractionResult", 
     "DiagramMappingResult",
@@ -30,8 +46,9 @@ __all__ = [
     "ProcessingStep",
     "DiagramMappingEntry",
     "MarksMappingEntry",
+    
+    # Collection names
     "COLLECTION_NAMES",
-    "INDEXES",
     
     # Connection classes
     "DatabaseManager",

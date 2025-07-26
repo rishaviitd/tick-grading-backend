@@ -496,6 +496,644 @@
         box-shadow: 0 15px 50px rgba(0, 0, 0, 0.08);
       }
 
+      /* Teacher display styles */
+      .teacher-display {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        box-shadow: var(--shadow-soft);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+      }
+
+      .teacher-avatar {
+        width: 32px;
+        height: 32px;
+        background: var(--gradient);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+      }
+
+      .teacher-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .teacher-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        line-height: 1.2;
+      }
+
+      .teacher-details {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        line-height: 1.2;
+      }
+
+      /* Assignment card styles */
+      .assignment-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-soft);
+        transition: all 0.3s ease;
+      }
+
+      .assignment-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: var(--primary-light);
+      }
+
+      .assignment-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+      }
+
+      .assignment-title {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+
+      .assignment-meta {
+        display: flex;
+        gap: 16px;
+        font-size: 0.9rem;
+        color: var(--text-muted);
+      }
+
+      .assignment-badge {
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+      }
+
+      .assignment-questions {
+        margin-top: 16px;
+      }
+
+      .question-preview {
+        background: var(--background-soft);
+        border: 1px solid var(--border-soft);
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 8px;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      .question-preview strong {
+        color: var(--text-primary);
+      }
+
+      .questions-container {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .question-item {
+        background: var(--background-soft);
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        line-height: 1.5;
+      }
+
+      .question-item:last-child {
+        margin-bottom: 0;
+      }
+
+      .question-item .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border-soft);
+      }
+
+      .question-item .question-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .question-item .question-header strong {
+        color: var(--text-primary);
+        font-size: 1rem;
+      }
+
+      .question-item .question-content {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 12px;
+        align-items: flex-start;
+      }
+
+      .question-item .question-text {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .question-item .question-text p {
+        margin: 0 0 8px 0;
+        line-height: 1.6;
+      }
+
+      .question-item .question-text p:last-child {
+        margin-bottom: 0;
+      }
+
+      .question-item .question-diagram {
+        flex-shrink: 0;
+      }
+
+      .question-item .diagram-thumbnail {
+        width: 120px;
+        height: 90px;
+        object-fit: contain;
+        border-radius: 8px;
+        border: 1px solid var(--border-soft);
+        background: var(--surface);
+        max-width: 100%;
+        max-height: 100%;
+      }
+
+      .question-item .question-diagram {
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 120px;
+        min-height: 90px;
+      }
+
+      .question-item .question-meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin-top: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--border-soft);
+      }
+
+      .question-type-badge {
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 500;
+        border: 1px solid var(--primary-light);
+      }
+
+      .internal-choice-badge {
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        border: 1px solid var(--primary-light);
+      }
+
+      .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+
+      .question-content {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+
+      .question-text {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .question-diagram {
+        flex-shrink: 0;
+      }
+
+      .diagram-thumbnail {
+        width: 80px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 6px;
+        border: 1px solid var(--border-soft);
+        background: var(--surface);
+      }
+
+      .question-marks {
+        display: flex;
+        align-items: center;
+      }
+
+      .marks-badge {
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        border: 1px solid var(--primary-light);
+      }
+
+      .assignment-actions {
+        margin-top: 20px;
+        display: flex;
+        gap: 12px;
+      }
+
+      .assignment-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-secondary);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+      }
+
+      .assignment-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+
+      .assignment-btn.primary {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+      }
+
+      .assignment-btn.primary:hover {
+        background: var(--primary-light);
+      }
+
+      /* Modal styles */
+      .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+        backdrop-filter: blur(4px);
+      }
+
+      .modal-content {
+        background: var(--surface);
+        border-radius: 16px;
+        padding: 0;
+        max-width: 800px;
+        width: 90%;
+        max-height: 90vh;
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border);
+        animation: modalSlideIn 0.3s ease-out;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--border);
+        background: var(--background-soft);
+      }
+
+      .modal-header h2 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 1.5rem;
+      }
+
+      .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: var(--text-muted);
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+
+      .modal-close:hover {
+        background: var(--background-soft);
+        color: var(--text-primary);
+      }
+
+      .modal-body {
+        padding: 32px;
+        overflow-y: auto;
+        flex: 1;
+      }
+
+      .assignment-info {
+        margin-bottom: 32px;
+        padding: 20px;
+        background: var(--background-soft);
+        border-radius: 12px;
+        border: 1px solid var(--border-soft);
+      }
+
+      .info-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .info-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .info-label {
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      .info-value {
+        color: var(--text-primary);
+        font-weight: 600;
+      }
+
+      .questions-section h3 {
+        margin-bottom: 20px;
+        color: var(--text-primary);
+        font-size: 1.3rem;
+      }
+
+      .questions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .detail-question {
+        background: var(--background-soft);
+        border: 1px solid var(--border-soft);
+        border-radius: 12px;
+        padding: 20px;
+      }
+
+      .detail-question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+
+      .detail-question-header h4 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 1.1rem;
+      }
+
+      .detail-marks-badge {
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        border: 1px solid var(--primary-light);
+      }
+
+      .detail-question-content {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 16px;
+      }
+
+      .detail-question-text {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .detail-question-text p {
+        margin: 0 0 12px 0;
+        line-height: 1.6;
+        color: var(--text-secondary);
+      }
+
+      .detail-question-text p:last-child {
+        margin-bottom: 0;
+      }
+
+      .detail-diagram {
+        flex-shrink: 0;
+      }
+
+      .detail-diagram-img {
+        width: 150px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid var(--border-soft);
+        background: var(--surface);
+      }
+
+      .detail-question-meta {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .question-type {
+        background: var(--background-soft);
+        color: var(--text-secondary);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        border: 1px solid var(--border-soft);
+      }
+
+      .internal-choice {
+        background: var(--primary-soft);
+        color: var(--primary);
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        border: 1px solid var(--primary-light);
+      }
+
+      @keyframes modalSlideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .modal-header {
+        margin-bottom: 24px;
+        text-align: center;
+      }
+
+      .modal-title {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+      }
+
+      .modal-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: var(--text-primary);
+        font-size: 0.95rem;
+      }
+
+      .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 1rem;
+        font-family: inherit;
+        background: var(--surface);
+        color: var(--text-primary);
+        transition: all 0.3s ease;
+      }
+
+      .form-input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 24px;
+      }
+
+      .modal-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: inherit;
+      }
+
+      .modal-btn.secondary {
+        background: var(--background-soft);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+      }
+
+      .modal-btn.secondary:hover {
+        background: var(--surface-hover);
+      }
+
+      .modal-btn.primary {
+        background: var(--primary);
+        color: white;
+      }
+
+      .modal-btn.primary:hover {
+        background: var(--primary-light);
+        transform: translateY(-1px);
+      }
+
+      .modal-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Student row styles */
+      .student-row {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .student-row:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+        border-color: var(--primary-light);
+      }
+
+      .student-row.selected {
+        border-color: var(--success);
+        background: var(--success-soft);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
+      }
+
+      .student-row.selected .student-avatar {
+        background: var(--success);
+      }
+
+      .upload-student-btn:hover {
+        background: var(--primary-light);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .upload-student-btn:active {
+        transform: translateY(0);
+      }
+
       /* Subtle pattern overlay */
       .header::after {
         content: "";
@@ -516,10 +1154,28 @@
     </style>
   </head>
   <body>
+    <!-- Teacher Display -->
+    <div class="teacher-display" id="teacher-display" style="display: none">
+      <div class="teacher-avatar" id="teacher-avatar">
+        <!-- Initials will be set by JavaScript -->
+      </div>
+      <div class="teacher-info">
+        <div class="teacher-name" id="teacher-name">
+          <!-- Teacher name will be set by JavaScript -->
+        </div>
+        <div class="teacher-details" id="teacher-details">
+          <!-- Teacher details will be set by JavaScript -->
+        </div>
+      </div>
+    </div>
+
     <div class="container">
       <div class="tabs">
         <button class="tab-button active" onclick="openTab('test-paper')">
           📄 Test Paper
+        </button>
+        <button class="tab-button" onclick="openTab('assignments')">
+          📚 Assignments
         </button>
         <button class="tab-button" onclick="openTab('student-response')">
           📋 Student Response
@@ -528,7 +1184,7 @@
 
       <div id="test-paper" class="tab-content active">
         <div class="upload-section">
-          <h2>Upload Test Paper for Question Extraction</h2>
+          <h2>Create Assignment</h2>
           <form id="question-extraction-form" enctype="multipart/form-data">
             <div
               class="upload-area"
@@ -571,7 +1227,7 @@
               <span></span>
             </div>
             <button type="submit" class="upload-btn" id="extract-btn">
-              Extract Questions & Diagrams
+              Extract Questions
             </button>
           </form>
 
@@ -591,134 +1247,562 @@
         </div>
       </div>
 
+      <div id="assignments" class="tab-content">
+        <div class="upload-section">
+          <!-- Assignments Loading State -->
+          <div
+            id="assignments-loading"
+            style="text-align: center; padding: 40px"
+          >
+            <div
+              class="spinner"
+              style="
+                width: 40px;
+                height: 40px;
+                margin: 0 auto 20px;
+                border: 4px solid var(--border);
+                border-top: 4px solid var(--primary);
+              "
+            ></div>
+            <p style="color: var(--text-secondary)">Loading assignments...</p>
+          </div>
+
+          <!-- Assignments List -->
+          <div id="assignments-list" style="display: none">
+            <!-- Assignments will be populated by JavaScript -->
+          </div>
+
+          <!-- No Assignments State -->
+          <div
+            id="no-assignments"
+            style="display: none; text-align: center; padding: 40px"
+          >
+            <div style="font-size: 4rem; margin-bottom: 20px">📚</div>
+            <h3 style="color: var(--text-primary); margin-bottom: 10px">
+              No Assignments Yet
+            </h3>
+            <p style="color: var(--text-secondary); margin-bottom: 30px">
+              Create your first assignment by uploading a test paper.
+            </p>
+            <button
+              onclick="openTab('test-paper')"
+              style="
+                background: var(--primary);
+                color: white;
+                padding: 12px 24px;
+                border: none;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 500;
+              "
+            >
+              Upload Test Paper
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div id="student-response" class="tab-content">
         <div class="upload-section">
           <h2>Process Student Response Images</h2>
-          <form id="response-processing-form">
-            <div class="image-upload-section" style="margin-bottom: 30px">
-              <label
+
+          <!-- Student Selection Section -->
+          <div class="student-selection-section" style="margin-bottom: 40px">
+            <h3
+              style="
+                font-size: 1.4rem;
+                font-weight: 600;
+                margin-bottom: 20px;
+                color: var(--text-primary);
+                text-align: center;
+              "
+            >
+              Select Student
+            </h3>
+
+            <div
+              class="students-list"
+              style="
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                margin-bottom: 30px;
+                max-width: 600px;
+                margin-left: auto;
+                margin-right: auto;
+              "
+            >
+              <div
+                class="student-row"
                 style="
-                  display: block;
-                  margin-bottom: 15px;
-                  font-weight: 600;
-                  color: var(--text-primary);
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px 20px;
+                  border: 2px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background-soft);
+                  transition: all 0.3s ease;
                 "
               >
-                Upload Student Response Images
-              </label>
-
-              <!-- File Upload Area -->
-              <div
-                class="upload-area"
-                onclick="document.getElementById('response-images').click()"
-                id="response-upload-area"
-              >
-                <div class="upload-icon">
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                </div>
-                <input
-                  type="file"
-                  id="response-images"
-                  multiple
-                  accept="image/*"
-                  style="display: none"
-                  onchange="handleImageSelection(this)"
-                />
-                <label class="upload-label" for="response-images">
-                  Drop student response images here
-                </label>
-                <div class="upload-sublabel">or click to browse your files</div>
-                <div class="file-types">
-                  JPG, PNG, GIF • Any size • Large images will be automatically
-                  compressed
-                </div>
-              </div>
-
-              <!-- Image Preview Section -->
-              <div
-                id="image-preview-section"
-                style="display: none; margin-top: 20px"
-              >
-                <h4 style="margin-bottom: 15px; color: var(--text-primary)">
-                  Selected Images:
-                </h4>
                 <div
-                  id="image-preview-grid"
-                  style="
-                    display: grid;
-                    grid-template-columns: repeat(
-                      auto-fill,
-                      minmax(200px, 1fr)
-                    );
-                    gap: 15px;
-                  "
-                ></div>
-              </div>
-
-              <!-- Upload Progress -->
-              <div id="upload-progress" style="display: none; margin-top: 20px">
-                <div
-                  style="
-                    background: var(--background-soft);
-                    border-radius: 8px;
-                    padding: 15px;
-                  "
+                  class="student-info"
+                  style="display: flex; align-items: center; gap: 15px"
                 >
                   <div
+                    class="student-avatar"
                     style="
+                      width: 45px;
+                      height: 45px;
+                      background: var(--gradient);
+                      border-radius: 50%;
                       display: flex;
-                      justify-content: space-between;
-                      margin-bottom: 8px;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-weight: 600;
+                      font-size: 1rem;
                     "
                   >
-                    <span
-                      style="font-size: 0.9rem; color: var(--text-secondary)"
-                      >Uploading to Cloudinary...</span
-                    >
-                    <span
-                      id="upload-count"
-                      style="font-size: 0.9rem; color: var(--text-secondary)"
-                      >0/0</span
-                    >
+                    SJ
                   </div>
-                  <div
-                    style="
-                      background: var(--border);
-                      border-radius: 4px;
-                      height: 6px;
-                    "
-                  >
-                    <div
-                      id="upload-progress-bar"
+                  <div>
+                    <h4
                       style="
-                        background: var(--primary);
-                        height: 100%;
-                        width: 0%;
-                        border-radius: 4px;
-                        transition: width 0.3s ease;
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        color: var(--text-primary);
+                        margin-bottom: 4px;
                       "
-                    ></div>
+                    >
+                      Shristi Jain
+                    </h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted)">
+                      Student ID: S001
+                    </p>
                   </div>
+                </div>
+                <div style="position: relative">
+                  <input
+                    type="file"
+                    id="student_001_files"
+                    multiple
+                    accept="image/*"
+                    style="display: none"
+                    onchange="handleStudentFileUpload('student_001', 'Shristi Jain', this)"
+                  />
+                  <button
+                    class="upload-student-btn"
+                    onclick="document.getElementById('student_001_files').click()"
+                    style="
+                      background: var(--primary);
+                      color: white;
+                      border: none;
+                      padding: 10px 20px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      font-size: 0.9rem;
+                      transition: all 0.3s ease;
+                    "
+                  >
+                    Upload
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="student-row"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px 20px;
+                  border: 2px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background-soft);
+                  transition: all 0.3s ease;
+                "
+              >
+                <div
+                  class="student-info"
+                  style="display: flex; align-items: center; gap: 15px"
+                >
+                  <div
+                    class="student-avatar"
+                    style="
+                      width: 45px;
+                      height: 45px;
+                      background: var(--gradient);
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-weight: 600;
+                      font-size: 1rem;
+                    "
+                  >
+                    PG
+                  </div>
+                  <div>
+                    <h4
+                      style="
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        color: var(--text-primary);
+                        margin-bottom: 4px;
+                      "
+                    >
+                      Prashant Goel
+                    </h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted)">
+                      Student ID: S002
+                    </p>
+                  </div>
+                </div>
+                <div style="position: relative">
+                  <input
+                    type="file"
+                    id="student_002_files"
+                    multiple
+                    accept="image/*"
+                    style="display: none"
+                    onchange="handleStudentFileUpload('student_002', 'Prashant Goel', this)"
+                  />
+                  <button
+                    class="upload-student-btn"
+                    onclick="document.getElementById('student_002_files').click()"
+                    style="
+                      background: var(--primary);
+                      color: white;
+                      border: none;
+                      padding: 10px 20px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      font-size: 0.9rem;
+                      transition: all 0.3s ease;
+                    "
+                  >
+                    Upload
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="student-row"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px 20px;
+                  border: 2px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background-soft);
+                  transition: all 0.3s ease;
+                "
+              >
+                <div
+                  class="student-info"
+                  style="display: flex; align-items: center; gap: 15px"
+                >
+                  <div
+                    class="student-avatar"
+                    style="
+                      width: 45px;
+                      height: 45px;
+                      background: var(--gradient);
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-weight: 600;
+                      font-size: 1rem;
+                    "
+                  >
+                    DK
+                  </div>
+                  <div>
+                    <h4
+                      style="
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        color: var(--text-primary);
+                        margin-bottom: 4px;
+                      "
+                    >
+                      Darshan Kumar
+                    </h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted)">
+                      Student ID: S003
+                    </p>
+                  </div>
+                </div>
+                <div style="position: relative">
+                  <input
+                    type="file"
+                    id="student_003_files"
+                    multiple
+                    accept="image/*"
+                    style="display: none"
+                    onchange="handleStudentFileUpload('student_003', 'Darshan Kumar', this)"
+                  />
+                  <button
+                    class="upload-student-btn"
+                    onclick="document.getElementById('student_003_files').click()"
+                    style="
+                      background: var(--primary);
+                      color: white;
+                      border: none;
+                      padding: 10px 20px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      font-size: 0.9rem;
+                      transition: all 0.3s ease;
+                    "
+                  >
+                    Upload
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="student-row"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px 20px;
+                  border: 2px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background-soft);
+                  transition: all 0.3s ease;
+                "
+              >
+                <div
+                  class="student-info"
+                  style="display: flex; align-items: center; gap: 15px"
+                >
+                  <div
+                    class="student-avatar"
+                    style="
+                      width: 45px;
+                      height: 45px;
+                      background: var(--gradient);
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-weight: 600;
+                      font-size: 1rem;
+                    "
+                  >
+                    AS
+                  </div>
+                  <div>
+                    <h4
+                      style="
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        color: var(--text-primary);
+                        margin-bottom: 4px;
+                      "
+                    >
+                      Ankit Singh
+                    </h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted)">
+                      Student ID: S004
+                    </p>
+                  </div>
+                </div>
+                <div style="position: relative">
+                  <input
+                    type="file"
+                    id="student_004_files"
+                    multiple
+                    accept="image/*"
+                    style="display: none"
+                    onchange="handleStudentFileUpload('student_004', 'Ankit Singh', this)"
+                  />
+                  <button
+                    class="upload-student-btn"
+                    onclick="document.getElementById('student_004_files').click()"
+                    style="
+                      background: var(--primary);
+                      color: white;
+                      border: none;
+                      padding: 10px 20px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      font-size: 0.9rem;
+                      transition: all 0.3s ease;
+                    "
+                  >
+                    Upload
+                  </button>
+                </div>
+              </div>
+
+              <div
+                class="student-row"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  padding: 16px 20px;
+                  border: 2px solid var(--border);
+                  border-radius: 12px;
+                  background: var(--background-soft);
+                  transition: all 0.3s ease;
+                "
+              >
+                <div
+                  class="student-info"
+                  style="display: flex; align-items: center; gap: 15px"
+                >
+                  <div
+                    class="student-avatar"
+                    style="
+                      width: 45px;
+                      height: 45px;
+                      background: var(--gradient);
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-weight: 600;
+                      font-size: 1rem;
+                    "
+                  >
+                    PM
+                  </div>
+                  <div>
+                    <h4
+                      style="
+                        font-size: 1.1rem;
+                        font-weight: 600;
+                        color: var(--text-primary);
+                        margin-bottom: 4px;
+                      "
+                    >
+                      Piya Maheshwari
+                    </h4>
+                    <p style="font-size: 0.9rem; color: var(--text-muted)">
+                      Student ID: S005
+                    </p>
+                  </div>
+                </div>
+                <div style="position: relative">
+                  <input
+                    type="file"
+                    id="student_005_files"
+                    multiple
+                    accept="image/*"
+                    style="display: none"
+                    onchange="handleStudentFileUpload('student_005', 'Piya Maheshwari', this)"
+                  />
+                  <button
+                    class="upload-student-btn"
+                    onclick="document.getElementById('student_005_files').click()"
+                    style="
+                      background: var(--primary);
+                      color: white;
+                      border: none;
+                      padding: 10px 20px;
+                      border-radius: 8px;
+                      cursor: pointer;
+                      font-weight: 500;
+                      font-size: 0.9rem;
+                      transition: all 0.3s ease;
+                    "
+                  >
+                    Upload
+                  </button>
                 </div>
               </div>
             </div>
 
-            <button
-              type="submit"
-              class="upload-btn"
-              id="process-response-btn"
-              disabled
+            <!-- Selected Student Display -->
+            <div
+              id="selected-student-display"
+              style="display: none; text-align: center; margin-bottom: 30px"
             >
-              Process Response Images
-            </button>
-          </form>
+              <div
+                style="
+                  background: var(--success-soft);
+                  border: 1px solid rgba(16, 185, 129, 0.2);
+                  border-radius: 12px;
+                  padding: 15px 25px;
+                  display: inline-block;
+                "
+              >
+                <span
+                  style="
+                    font-weight: 600;
+                    color: var(--success);
+                    font-size: 1.1rem;
+                  "
+                  >Selected:
+                </span>
+                <span
+                  id="selected-student-name"
+                  style="
+                    font-weight: 600;
+                    color: var(--text-primary);
+                    font-size: 1.1rem;
+                  "
+                ></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload Progress Section -->
+          <div
+            id="upload-progress"
+            style="display: none; margin: 30px 0; text-align: center"
+          >
+            <h4 style="color: var(--text-primary); margin-bottom: 15px">
+              Uploading Images...
+            </h4>
+            <div
+              style="
+                background: var(--background-soft);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                padding: 20px;
+                max-width: 400px;
+                margin: 0 auto;
+              "
+            >
+              <div
+                id="upload-progress-bar"
+                style="
+                  width: 0%;
+                  height: 8px;
+                  background: var(--primary);
+                  border-radius: 4px;
+                  transition: width 0.3s ease;
+                  margin-bottom: 10px;
+                "
+              ></div>
+              <div
+                id="upload-count"
+                style="
+                  font-size: 0.9rem;
+                  color: var(--text-secondary);
+                  font-weight: 500;
+                "
+              >
+                0/0
+              </div>
+            </div>
+          </div>
 
           <!-- Response Processing Results Section -->
           <div
@@ -740,7 +1824,248 @@
       </div>
     </div>
 
+    <!-- Assignment Details Modal -->
+    <div class="modal-overlay" id="assignment-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="modal-title">Assignment Details</div>
+          <div class="modal-subtitle">
+            Please provide the assignment information
+          </div>
+        </div>
+
+        <form id="assignment-form">
+          <div class="form-group">
+            <label class="form-label" for="assignment-title"
+              >Assignment Name</label
+            >
+            <input
+              type="text"
+              id="assignment-title"
+              class="form-input"
+              placeholder="Enter assignment name (e.g., Mathematics Mid-Term)"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="assignment-marks">Total Marks</label>
+            <input
+              type="number"
+              id="assignment-marks"
+              class="form-input"
+              placeholder="Enter total marks (e.g., 100)"
+              min="1"
+              max="200"
+              required
+            />
+          </div>
+
+          <div class="modal-actions">
+            <button
+              type="button"
+              class="modal-btn secondary"
+              onclick="closeAssignmentModal()"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="modal-btn primary"
+              id="modal-submit-btn"
+            >
+              Create Assignment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <script>
+      // Load teacher information on page load
+      async function loadTeacherInfo() {
+        try {
+          const response = await fetch("/api/current-teacher");
+          const data = await response.json();
+
+          if (data.success && data.teacher) {
+            const teacher = data.teacher;
+
+            // Get teacher initials
+            const initials = teacher.name
+              .split(" ")
+              .map((name) => name[0])
+              .join("")
+              .toUpperCase();
+
+            // Update teacher display elements
+            document.getElementById("teacher-avatar").textContent = initials;
+            document.getElementById("teacher-name").textContent = teacher.name;
+            document.getElementById(
+              "teacher-details"
+            ).textContent = `Class ${teacher.class_name} • ${teacher.board}`;
+
+            // Show teacher display
+            document.getElementById("teacher-display").style.display = "flex";
+          }
+        } catch (error) {
+          console.error("Failed to load teacher information:", error);
+          // Hide teacher display if there's an error
+          document.getElementById("teacher-display").style.display = "none";
+        }
+      }
+
+      // Load teacher info when page loads
+      document.addEventListener("DOMContentLoaded", loadTeacherInfo);
+
+      // Load assignments when assignments tab is opened
+      async function loadAssignments() {
+        const loadingDiv = document.getElementById("assignments-loading");
+        const listDiv = document.getElementById("assignments-list");
+        const noAssignmentsDiv = document.getElementById("no-assignments");
+
+        try {
+          // Show loading state
+          loadingDiv.style.display = "block";
+          listDiv.style.display = "none";
+          noAssignmentsDiv.style.display = "none";
+
+          const response = await fetch("/api/assignments");
+          const data = await response.json();
+
+          if (data.success && data.assignments && data.assignments.length > 0) {
+            // Show assignments list
+            loadingDiv.style.display = "none";
+            listDiv.style.display = "block";
+            noAssignmentsDiv.style.display = "none";
+
+            // Store assignments data globally for modal access
+            window.assignmentsData = data.assignments;
+
+            // Render assignments
+            renderAssignments(data.assignments);
+          } else {
+            // Show no assignments state
+            loadingDiv.style.display = "none";
+            listDiv.style.display = "none";
+            noAssignmentsDiv.style.display = "block";
+          }
+        } catch (error) {
+          console.error("Failed to load assignments:", error);
+          // Show no assignments state on error
+          loadingDiv.style.display = "none";
+          listDiv.style.display = "none";
+          noAssignmentsDiv.style.display = "block";
+        }
+      }
+
+      // Render assignments in the list
+      function renderAssignments(assignments) {
+        const listDiv = document.getElementById("assignments-list");
+
+        const assignmentsHtml = assignments
+          .map((assignment) => {
+            const createdDate = new Date(
+              assignment.created_at
+            ).toLocaleDateString();
+            const questionCount = assignment.total_questions || 0;
+
+            // Create full question list (show all questions)
+            const questionList = assignment.question_details
+              ? assignment.question_details
+                  .map((q) => {
+                    // Create diagram display if available
+                    let diagramDisplay = "";
+                    if (q.primary_diagram_url) {
+                      diagramDisplay = `<div class="question-diagram">
+                          <img src="${q.primary_diagram_url}" alt="Question Diagram" class="diagram-thumbnail" />
+                        </div>`;
+                    } else if (q.secondary_diagram_url) {
+                      diagramDisplay = `<div class="question-diagram">
+                          <img src="${q.secondary_diagram_url}" alt="Question Diagram" class="diagram-thumbnail" />
+                        </div>`;
+                    }
+
+                    // Create marks display
+                    let marksDisplay = "";
+                    if (q.primary_marks) {
+                      marksDisplay = `<div class="question-marks">
+                          <span class="marks-badge">${q.primary_marks}</span>
+                        </div>`;
+                    }
+
+                    return `<div class="question-item">
+                        <div class="question-header">
+                          <div class="question-title">
+                            <strong>Q${q.question_identifier}:</strong>
+                            <span class="question-type-badge">${
+                              q.question_type
+                            }</span>
+                          </div>
+                          ${marksDisplay}
+                        </div>
+                        <div class="question-content">
+                          <div class="question-text">
+                            <p>${q.primary_question}</p>
+                            ${
+                              q.secondary_question
+                                ? `<p><strong>OR:</strong> ${q.secondary_question}</p>`
+                                : ""
+                            }
+                          </div>
+                          ${diagramDisplay}
+                        </div>
+                        <div class="question-meta">
+                          ${
+                            q.has_internal_choice
+                              ? '<span class="internal-choice-badge">Internal Choice</span>'
+                              : ""
+                          }
+                        </div>
+                      </div>`;
+                  })
+                  .join("")
+              : "";
+
+            return `
+            <div class="assignment-card">
+              <div class="assignment-header">
+                <div>
+                  <div class="assignment-title">${assignment.title}</div>
+                  <div class="assignment-meta">
+                    <span>📝 ${questionCount} Questions</span>
+                    <span>🎯 ${assignment.total_marks} Marks</span>
+                  </div>
+                </div>
+              </div>
+              
+              ${
+                questionList
+                  ? `
+                <div class="assignment-questions">
+                  <div class="questions-container">
+                    ${questionList}
+                  </div>
+                </div>
+              `
+                  : ""
+              }
+              
+              <div class="assignment-actions">
+                <button class="assignment-btn" onclick="openTab('student-response')">
+                  Process Responses
+                </button>
+              </div>
+            </div>
+          `;
+          })
+          .join("");
+
+        listDiv.innerHTML = assignmentsHtml;
+      }
+
+      // Assignment details are now shown directly in the assignment cards
+
       function openTab(tabName) {
         // Hide all tab contents
         const tabContents = document.getElementsByClassName("tab-content");
@@ -757,6 +2082,11 @@
         // Show selected tab content and activate button
         document.getElementById(tabName).classList.add("active");
         event.currentTarget.classList.add("active");
+
+        // Load assignments if assignments tab is opened
+        if (tabName === "assignments") {
+          loadAssignments();
+        }
       }
 
       function displayFileName(inputId, nameId) {
@@ -819,36 +2149,121 @@
         .addEventListener("submit", async function (e) {
           e.preventDefault();
 
-          const formData = new FormData();
           const fileInput = document.getElementById("test-paper-file");
-          const button = document.getElementById("extract-btn");
-          const resultsSection = document.getElementById("results-section");
-          const resultsContent = document.getElementById("results-content");
 
           if (!fileInput.files[0]) {
             alert("Please select a PDF file");
             return;
           }
 
-          formData.append("pdf_file", fileInput.files[0]);
+          // Show assignment details modal
+          showAssignmentModal(fileInput.files[0]);
+        });
+
+      // Show assignment modal
+      function showAssignmentModal(file) {
+        const modal = document.getElementById("assignment-modal");
+        modal.style.display = "flex";
+
+        // Store the file for later use
+        currentAssignmentFile = file;
+      }
+
+      // Close assignment modal
+      function closeAssignmentModal() {
+        const modal = document.getElementById("assignment-modal");
+        modal.style.display = "none";
+
+        // Clear form and file
+        document.getElementById("assignment-form").reset();
+        currentAssignmentFile = null;
+      }
+
+      // Handle assignment form submission
+      document
+        .getElementById("assignment-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const modal = document.getElementById("assignment-modal");
+          const file = currentAssignmentFile;
+          const title = document.getElementById("assignment-title").value;
+          const marks = document.getElementById("assignment-marks").value;
+          const submitBtn = document.getElementById("modal-submit-btn");
+          const resultsSection = document.getElementById("results-section");
+          const resultsContent = document.getElementById("results-content");
+
+          if (!title || !marks) {
+            alert("Please fill in all fields");
+            return;
+          }
+
+          if (!file) {
+            alert("No file selected. Please select a PDF file.");
+            return;
+          }
+
+          // Validate file type
+          if (!file.name.toLowerCase().endsWith(".pdf")) {
+            alert("Please select a PDF file.");
+            return;
+          }
+
+          // Validate file size (max 50MB)
+          if (file.size > 50 * 1024 * 1024) {
+            alert("File size must be less than 50MB.");
+            return;
+          }
 
           // Update button state
-          const originalText = button.textContent;
-          button.innerHTML = `
-          <div style="display: flex; align-items: center; justify-content: center; gap: 12px;">
-            <div class="spinner" style="width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white;"></div>
-            Processing PDF...
-          </div>
-        `;
-          button.disabled = true;
+          const originalText = submitBtn.textContent;
+          submitBtn.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px;">
+              <div class="spinner" style="width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top: 2px solid white;"></div>
+              Creating Assignment...
+            </div>
+          `;
+          submitBtn.disabled = true;
 
           try {
+            // Debug logging
+            console.log("File object:", file);
+            console.log("File type:", typeof file);
+            console.log("File instanceof File:", file instanceof File);
+            console.log("Title:", title);
+            console.log("Marks:", marks);
+
+            const formData = new FormData();
+            formData.append("pdf_file", file);
+            formData.append("assignment_title", title);
+            formData.append("assignment_marks", marks);
+
+            // Debug FormData
+            console.log("FormData entries:");
+            for (let [key, value] of formData.entries()) {
+              console.log(`${key}:`, value);
+            }
+
             const response = await fetch("/process-cbse-paper", {
               method: "POST",
               body: formData,
             });
 
+            console.log("Response status:", response.status);
+            console.log("Response headers:", response.headers);
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Server error response:", errorText);
+              throw new Error(
+                `Server error: ${response.status} - ${errorText}`
+              );
+            }
+
             const result = await response.json();
+
+            // Close modal
+            closeAssignmentModal();
 
             // Show results section
             resultsSection.style.display = "block";
@@ -856,8 +2271,10 @@
             if (result.success) {
               resultsContent.innerHTML = `
               <div style="background: var(--success-soft); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
-                <h4 style="color: var(--success); margin-bottom: 15px;">✅ Processing Completed Successfully!</h4>
+                <h4 style="color: var(--success); margin-bottom: 15px;">✅ Assignment Created Successfully!</h4>
                 <div style="color: var(--text-secondary);">
+                  <p><strong>Assignment Name:</strong> ${title}</p>
+                  <p><strong>Total Marks:</strong> ${marks}</p>
                   <p><strong>Message:</strong> ${result.message}</p>
                   ${
                     result.final_outputs.total_diagrams
@@ -881,7 +2298,10 @@
                   }
                 </div>
                 <div style="margin-top: 15px;">
-                  <a href="/logs/" target="_blank" style="background: var(--primary); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">
+                  <button onclick="openTab('assignments')" style="background: var(--primary); color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; margin-right: 10px;">
+                    View Assignments →
+                  </button>
+                  <a href="/logs/" target="_blank" style="background: var(--text-muted); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">
                     View Detailed Logs →
                   </a>
                 </div>
@@ -890,7 +2310,7 @@
             } else {
               resultsContent.innerHTML = `
               <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
-                <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Processing Failed</h4>
+                <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Assignment Creation Failed</h4>
                 <div style="color: var(--text-secondary);">
                   ${result.errors.map((error) => `<p>• ${error}</p>`).join("")}
                 </div>
@@ -898,6 +2318,7 @@
             `;
             }
           } catch (error) {
+            closeAssignmentModal();
             resultsSection.style.display = "block";
             resultsContent.innerHTML = `
             <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
@@ -907,14 +2328,182 @@
           `;
           } finally {
             // Reset button
-            button.textContent = originalText;
-            button.disabled = false;
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
           }
         });
 
       // Global variables for image handling
       let selectedImages = [];
       let uploadedUrls = [];
+      let selectedStudentId = null;
+      let selectedStudentName = null;
+      let currentAssignmentFile = null; // Store the current assignment file
+
+      // Handle student selection
+      function selectStudent(studentId, studentName) {
+        // Remove selected class from all student rows
+        document.querySelectorAll(".student-row").forEach((row) => {
+          row.classList.remove("selected");
+        });
+
+        // Add selected class to clicked row
+        event.currentTarget.classList.add("selected");
+
+        // Update global variables
+        selectedStudentId = studentId;
+        selectedStudentName = studentName;
+
+        // Show selected student display
+        const selectedDisplay = document.getElementById(
+          "selected-student-display"
+        );
+        const selectedNameSpan = document.getElementById(
+          "selected-student-name"
+        );
+        selectedNameSpan.textContent = studentName;
+        selectedDisplay.style.display = "block";
+
+        // Enable process button if images are also selected
+        if (selectedImages.length > 0) {
+          document.getElementById("process-response-btn").disabled = false;
+        }
+      }
+
+      // Handle student file upload
+      function handleStudentFileUpload(studentId, studentName, input) {
+        // Set the selected student
+        selectedStudentId = studentId;
+        selectedStudentName = studentName;
+
+        // Remove selected class from all student rows
+        document.querySelectorAll(".student-row").forEach((row) => {
+          row.classList.remove("selected");
+        });
+
+        // Add selected class to the clicked row
+        input.closest(".student-row").classList.add("selected");
+
+        // Show selected student display
+        const selectedDisplay = document.getElementById(
+          "selected-student-display"
+        );
+        const selectedNameSpan = document.getElementById(
+          "selected-student-name"
+        );
+        selectedNameSpan.textContent = studentName;
+        selectedDisplay.style.display = "block";
+
+        // Handle the file upload
+        const files = Array.from(input.files);
+        selectedImages = files;
+
+        if (files.length > 0) {
+          // Show success message
+          showUploadSuccess(studentName, files.length);
+
+          // Process the files immediately
+          processStudentFiles(studentId, studentName, files);
+        }
+      }
+
+      // Show upload success message
+      function showUploadSuccess(studentName, fileCount) {
+        const resultsSection = document.getElementById(
+          "response-results-section"
+        );
+        const resultsContent = document.getElementById(
+          "response-results-content"
+        );
+
+        resultsSection.style.display = "block";
+        resultsContent.innerHTML = `
+          <div style="background: var(--success-soft); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+            <h4 style="color: var(--success); margin-bottom: 15px;">✅ Files Uploaded Successfully!</h4>
+            <div style="color: var(--text-secondary);">
+              <p><strong>Student:</strong> ${studentName}</p>
+              <p><strong>Files Uploaded:</strong> ${fileCount} image(s)</p>
+              <p><strong>Status:</strong> Processing...</p>
+            </div>
+          </div>
+        `;
+      }
+
+      // Process student files
+      async function processStudentFiles(studentId, studentName, files) {
+        try {
+          // Upload images to Cloudinary
+          const urls = await uploadToCloudinary(files);
+
+          // Send URLs to crop-margins endpoint with student information
+          const response = await fetch("/crop-margins", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              urls: urls,
+              assignment_id: "assignment_001", // This should be dynamically set based on the current assignment
+              student_id: studentId,
+              student_name: studentName,
+            }),
+          });
+
+          const result = await response.json();
+
+          // Update results
+          const resultsContent = document.getElementById(
+            "response-results-content"
+          );
+
+          if (response.ok) {
+            resultsContent.innerHTML = `
+              <div style="background: var(--success-soft); padding: 20px; border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.2);">
+                <h4 style="color: var(--success); margin-bottom: 15px;">✅ Processing Completed!</h4>
+                <div style="color: var(--text-secondary);">
+                  <p><strong>Student:</strong> ${studentName}</p>
+                  <p><strong>Message:</strong> ${result.message}</p>
+                  <p><strong>Run ID:</strong> ${result.run_id}</p>
+                  <p><strong>Images Processed:</strong> ${urls.length}</p>
+                </div>
+                <div style="margin-top: 15px;">
+                  <button onclick="viewResponseResults('${result.run_id}')" style="background: var(--primary); color: white; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.9rem; margin-right: 10px;">
+                    View Results →
+                  </button>
+                  <a href="/logs/" target="_blank" style="background: var(--text-muted); color: white; padding: 8px 16px; border-radius: 8px; text-decoration: none; font-size: 0.9rem;">
+                    View Logs →
+                  </a>
+                </div>
+              </div>
+            `;
+          } else {
+            resultsContent.innerHTML = `
+              <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
+                <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Processing Failed</h4>
+                <div style="color: var(--text-secondary);">
+                  <p><strong>Student:</strong> ${studentName}</p>
+                  <p><strong>Error:</strong> ${
+                    result.detail || "Unknown error occurred"
+                  }</p>
+                </div>
+              </div>
+            `;
+          }
+        } catch (error) {
+          const resultsContent = document.getElementById(
+            "response-results-content"
+          );
+          resultsContent.innerHTML = `
+            <div style="background: #fee2e2; padding: 20px; border-radius: 12px; border: 1px solid #fca5a5;">
+              <h4 style="color: #dc2626; margin-bottom: 15px;">❌ Upload/Processing Error</h4>
+              <p style="color: var(--text-secondary);">${
+                error.message ||
+                "Failed to upload or process images. Please try again."
+              }</p>
+            </div>
+          `;
+        }
+      }
 
       // Handle image selection
       function handleImageSelection(input) {
@@ -923,7 +2512,10 @@
 
         if (files.length > 0) {
           displayImagePreviews(files);
-          document.getElementById("process-response-btn").disabled = false;
+          // Enable process button only if both student and images are selected
+          if (selectedStudentId) {
+            document.getElementById("process-response-btn").disabled = false;
+          }
         } else {
           document.getElementById("process-response-btn").disabled = true;
         }
@@ -999,15 +2591,20 @@
         const progressBar = document.getElementById("upload-progress-bar");
         const uploadCount = document.getElementById("upload-count");
 
-        uploadProgress.style.display = "block";
+        // Show progress if elements exist
+        if (uploadProgress && progressBar && uploadCount) {
+          uploadProgress.style.display = "block";
+        }
         uploadedUrls = [];
 
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
 
-          // Update progress
-          uploadCount.textContent = `${i + 1}/${files.length}`;
-          progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
+          // Update progress if elements exist
+          if (uploadCount && progressBar) {
+            uploadCount.textContent = `${i + 1}/${files.length}`;
+            progressBar.style.width = `${((i + 1) / files.length) * 100}%`;
+          }
 
           try {
             // Create FormData for file upload
@@ -1032,7 +2629,10 @@
           }
         }
 
-        uploadProgress.style.display = "none";
+        // Hide progress if element exists
+        if (uploadProgress) {
+          uploadProgress.style.display = "none";
+        }
         return uploadedUrls;
       }
 
@@ -1049,6 +2649,11 @@
           const resultsContent = document.getElementById(
             "response-results-content"
           );
+
+          if (!selectedStudentId) {
+            alert("Please select a student first");
+            return;
+          }
 
           if (selectedImages.length === 0) {
             alert("Please select at least one image");
@@ -1069,13 +2674,18 @@
             // First, upload images to Cloudinary
             const urls = await uploadToCloudinary(selectedImages);
 
-            // Then, send URLs to crop-margins endpoint
+            // Then, send URLs to crop-margins endpoint with student information
             const response = await fetch("/crop-margins", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ urls: urls }),
+              body: JSON.stringify({
+                urls: urls,
+                assignment_id: "assignment_001", // This should be dynamically set based on the current assignment
+                student_id: selectedStudentId,
+                student_name: selectedStudentName,
+              }),
             });
 
             const result = await response.json();

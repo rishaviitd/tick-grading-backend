@@ -1344,7 +1344,7 @@ def vstack_images(images: List[np.ndarray]) -> Image.Image:
     return new_im
 
 
-async def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf") -> Dict[str, Any]:
+async def run_end_to_end_processing(file_content: bytes, filename: str = "uploaded.pdf", assignment_title: str = None, assignment_marks: int = None) -> Dict[str, Any]:
     """
     Run the complete end-to-end processing pipeline
     
@@ -1621,7 +1621,7 @@ async def run_end_to_end_processing(file_content: bytes, filename: str = "upload
             # Only proceed if all required steps succeeded
             required_steps = ['step3', 'step4']  # step1 and step2 are optional
             if all(results['step_results'].get(step, {}).get('success', False) for step in required_steps):
-                success = await db_integration.combine_and_save_questions(pipeline_run_id)
+                success = await db_integration.combine_and_save_questions(pipeline_run_id, assignment_title, assignment_marks)
                 
                 results['step_results']['step5'] = {
                     'success': success,

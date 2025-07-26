@@ -1,0 +1,25 @@
+{
+  "run_id": "test_workflow_20250725_042632",
+  "generated_at": "2025-07-24T22:56:32.955639",
+  "metadata": {
+    "total_questions": 0,
+    "total_responses": 2,
+    "total_mappings": 0
+  },
+  "student_responses": {
+    "id": "6882ba209d050e0ad20599f2",
+    "student_id": "test_student_123",
+    "assignment_id": "test_assignment_456",
+    "run_id": "test_workflow_20250725_042632",
+    "responses": [
+      {
+        "question_identifier": "Q1",
+        "cloudinary_url": "https://res.cloudinary.com/test/image1.jpg"
+      },
+      {
+        "question_identifier": "Q2",
+        "cloudinary_url": "https://res.cloudinary.com/test/image2.jpg"
+      }
+    ]
+  }
+}

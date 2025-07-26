@@ -15,8 +15,14 @@ from dotenv import load_dotenv
 import logging
 
 from .schema import (
+    # Core business logic schemas
+    Teacher, Student, Assignment, Question, StudentResponse, StudentAssignmentResponse, QuestionResponseMapping,
+    
+    # Legacy pipeline processing schemas
     PipelineResult, DiagramExtractionResult, DiagramMappingResult,
-    QuestionExtractionResult, MarksMappingResult, Question, ResponseProcessingResult,
+    QuestionExtractionResult, MarksMappingResult,
+    
+    # Collection names and indexes
     COLLECTION_NAMES, INDEXES
 )
 
@@ -82,9 +88,23 @@ class DatabaseManager:
         try:
             for collection_name, indexes in INDEXES.items():
                 collection = self._collections[collection_name]
-                for index_fields in indexes:
-                    await collection.create_index(index_fields)
-                logger.info(f"Created indexes for collection: {collection_name}")
+                try:
+                    # Create a dummy document to ensure collection exists
+                    # This will be deleted immediately after index creation
+                    dummy_doc = {"_dummy": True, "created_at": datetime.utcnow()}
+                    await collection.insert_one(dummy_doc)
+                    
+                    # Create indexes
+                    for index_fields in indexes:
+                        await collection.create_index(index_fields)
+                    logger.info(f"Created indexes for collection: {collection_name}")
+                    
+                    # Remove the dummy document
+                    await collection.delete_one({"_dummy": True})
+                    
+                except Exception as index_error:
+                    # Log the error but don't fail the entire connection
+                    logger.warning(f"Could not create indexes for collection {collection_name}: {index_error}")
         except Exception as e:
             logger.error(f"Failed to create indexes: {e}")
     
@@ -205,48 +225,115 @@ class PipelineDatabase:
             logger.error(f"Failed to save marks mapping result: {e}")
             return False
     
-    async def save_question(self, question: Question) -> bool:
-        """Save a combined question to database"""
+    async def save_question(self, question: Question) -> Optional[str]:
+        """Save a combined question to database and return the question ID"""
         try:
             collection = self.db_manager.get_collection(COLLECTION_NAMES["questions"])
             if collection is None:
                 logger.error("Questions collection not found")
-                return False
+                return None
             
             # Convert to dict and ensure run_id is set
             data = question.dict(by_alias=True)
             if not data.get("run_id"):
                 logger.error("Question must have run_id")
-                return False
+                return None
             
             result = await collection.insert_one(data)
             logger.info(f"Saved question with ID: {result.inserted_id}")
-            return True
+            return str(result.inserted_id)
             
         except Exception as e:
             logger.error(f"Failed to save question: {e}")
-            return False
+            return None
     
-    async def save_response_processing(self, response_result: ResponseProcessingResult) -> bool:
-        """Save response processing results to database"""
+
+    
+    async def save_question_response_mapping(self, mapping: QuestionResponseMapping) -> Optional[str]:
+        """Save question-response mapping to database and return the mapping ID"""
         try:
-            collection = self.db_manager.get_collection(COLLECTION_NAMES["response_processing"])
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["question_response_mappings"])
             if collection is None:
-                logger.error("Response processing collection not found")
-                return False
+                logger.error("Question response mapping collection not found")
+                return None
             
             # Convert to dict and handle ObjectId
-            data = response_result.dict(by_alias=True)
+            data = mapping.dict(by_alias=True)
             if data.get("_id") is None:
                 data.pop("_id", None)
             
             result = await collection.insert_one(data)
-            logger.info(f"Saved response processing result with ID: {result.inserted_id}")
-            return True
+            logger.info(f"Saved question-response mapping with ID: {result.inserted_id}")
+            return str(result.inserted_id)
             
         except Exception as e:
-            logger.error(f"Failed to save response processing result: {e}")
-            return False
+            logger.error(f"Failed to save question-response mapping: {e}")
+            return None
+    
+    async def get_question_response_mappings_by_run_id(self, run_id: str) -> List[Dict[str, Any]]:
+        """Get all question-response mappings for a specific run_id"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["question_response_mappings"])
+            if collection is None:
+                logger.error("Question response mapping collection not found")
+                return []
+            
+            cursor = collection.find({"run_id": run_id}).sort("question_identifier", 1)
+            results = await cursor.to_list(length=None)
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to get question-response mappings: {e}")
+            return []
+    
+    async def get_question_response_mapping_by_question_id(self, run_id: str, question_identifier: str) -> Optional[Dict[str, Any]]:
+        """Get question-response mapping for a specific question identifier"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["question_response_mappings"])
+            if collection is None:
+                logger.error("Question response mapping collection not found")
+                return None
+            
+            result = await collection.find_one({
+                "run_id": run_id,
+                "question_identifier": question_identifier
+            })
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get question-response mapping: {e}")
+            return None
+    
+    async def get_questions_by_run_id(self, run_id: str) -> List[Dict[str, Any]]:
+        """Get all questions for a specific run_id"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["questions"])
+            if collection is None:
+                logger.error("Questions collection not found")
+                return []
+            
+            cursor = collection.find({"run_id": run_id}).sort("question_identifier", 1)
+            results = await cursor.to_list(length=None)
+            return results
+            
+        except Exception as e:
+            logger.error(f"Failed to get questions: {e}")
+            return []
+    
+    async def get_responses_by_run_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get student assignment response for a specific run_id"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["student_assignment_responses"])
+            if collection is None:
+                logger.error("Student assignment responses collection not found")
+                return None
+            
+            result = await collection.find_one({"run_id": run_id})
+            return result
+            
+        except Exception as e:
+            logger.error(f"Failed to get student assignment responses: {e}")
+            return None
     
     async def get_pipeline_by_run_id(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get pipeline result by run_id"""
@@ -324,6 +411,145 @@ class PipelineDatabase:
         except Exception as e:
             logger.error(f"Failed to update pipeline status: {e}")
             return False
+
+    # =============================================================================
+    # CORE BUSINESS LOGIC METHODS
+    # =============================================================================
+    
+    async def save_teacher(self, teacher: Teacher) -> bool:
+        """Save teacher to database"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["teachers"])
+            if collection is None:
+                logger.error("Teachers collection not found")
+                return False
+            
+            # Convert to dict and handle ObjectId
+            data = teacher.dict(by_alias=True)
+            if data.get("_id") is None:
+                data.pop("_id", None)
+            
+            result = await collection.insert_one(data)
+            logger.info(f"Saved teacher with ID: {result.inserted_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save teacher: {e}")
+            return False
+    
+    async def save_student(self, student: Student) -> bool:
+        """Save student to database"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["students"])
+            if collection is None:
+                logger.error("Students collection not found")
+                return False
+            
+            # Convert to dict and handle ObjectId
+            data = student.dict(by_alias=True)
+            if data.get("_id") is None:
+                data.pop("_id", None)
+            
+            result = await collection.insert_one(data)
+            logger.info(f"Saved student with ID: {result.inserted_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save student: {e}")
+            return False
+    
+    async def save_assignment(self, assignment: Assignment) -> Optional[str]:
+        """Save assignment to database and return the assignment ID"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["assignments"])
+            if collection is None:
+                logger.error("Assignments collection not found")
+                return None
+            
+            # Convert to dict and handle ObjectId
+            data = assignment.dict(by_alias=True)
+            if data.get("_id") is None:
+                data.pop("_id", None)
+            
+            result = await collection.insert_one(data)
+            logger.info(f"Saved assignment with ID: {result.inserted_id}")
+            return str(result.inserted_id)
+            
+        except Exception as e:
+            logger.error(f"Failed to save assignment: {e}")
+            return None
+    
+    async def update_assignment_questions(self, assignment_id: str, question_ids: List[str]) -> bool:
+        """Update the questions array in an assignment"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["assignments"])
+            if collection is None:
+                logger.error("Assignments collection not found")
+                return False
+            
+            # Try with string ID first (since our Pydantic models use string IDs)
+            result = await collection.update_one(
+                {"_id": assignment_id},
+                {
+                    "$set": {
+                        "questions": question_ids,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                logger.info(f"Updated assignment questions for assignment_id: {assignment_id}")
+                return True
+            else:
+                # Try with ObjectId as fallback
+                try:
+                    from bson import ObjectId
+                    result = await collection.update_one(
+                        {"_id": ObjectId(assignment_id)},
+                        {
+                            "$set": {
+                                "questions": question_ids,
+                                "updated_at": datetime.utcnow()
+                            }
+                        }
+                    )
+                    
+                    if result.modified_count > 0:
+                        logger.info(f"Updated assignment questions for assignment_id: {assignment_id} (ObjectId)")
+                        return True
+                except Exception:
+                    pass
+                
+                logger.warning(f"No assignment found with ID: {assignment_id}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Failed to update assignment questions: {e}")
+            return False
+    
+    async def save_student_assignment_response(self, response: StudentAssignmentResponse) -> bool:
+        """Save student assignment response to database"""
+        try:
+            collection = self.db_manager.get_collection(COLLECTION_NAMES["student_assignment_responses"])
+            if collection is None:
+                logger.error("Student assignment responses collection not found")
+                return False
+            
+            # Convert to dict and handle ObjectId
+            data = response.dict(by_alias=True)
+            if data.get("_id") is None:
+                data.pop("_id", None)
+            
+            result = await collection.insert_one(data)
+            logger.info(f"Saved student assignment response with ID: {result.inserted_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to save student assignment response: {e}")
+            return False
+    
+
 
 
 # Global database manager instance

@@ -51,9 +51,9 @@ Main collection storing complete pipeline execution data.
 }
 ```
 
-### 2. `diagram_extraction_results`
+### 2. `visual_extraction_results`
 
-Stores results from Step 1: Diagram Extraction.
+Stores results from Step 1: Visual Content Extraction (figures and tables).
 
 **Schema:**
 
@@ -61,20 +61,21 @@ Stores results from Step 1: Diagram Extraction.
 {
   "_id": "ObjectId",
   "run_id": "string",
-  "step": "diagram_extraction",
   "total_figures": "number",
   "pages_processed": "number",
   "extraction_success": "boolean",
-  "figure_files": ["string"],
-  "overview_image_path": "string",
+  "figures": ["string"],
+  "tables": ["string"],
+  "overview_image_figures": "string",
+  "overview_image_tables": "string",
   "created_at": "datetime",
   "updated_at": "datetime"
 }
 ```
 
-### 3. `diagram_mapping_results`
+### 3. `visual_mapping_results`
 
-Stores results from Step 2: Diagram Mapping with Cloudinary URLs.
+Stores results from Step 2: Visual Content Mapping with Cloudinary URLs.
 
 **Schema:**
 
@@ -82,12 +83,21 @@ Stores results from Step 2: Diagram Mapping with Cloudinary URLs.
 {
   "_id": "ObjectId",
   "run_id": "string",
-  "step": "diagram_mapping",
-  "mapping": {
+  "step": "visual_mapping",
+  "figures": {
     "figure-1": {
       "question_identifier": "string",
       "choice_location": "string",
-      "cloudinary_url": "string"
+      "diagram_id": "string",
+      "table_id": "null"
+    }
+  },
+  "tables": {
+    "table-1": {
+      "question_identifier": "string",
+      "choice_location": "string",
+      "diagram_id": "null",
+      "table_id": "string"
     }
   },
   "total_mappings": "number",
@@ -115,31 +125,6 @@ Stores results from Step 3: Question Extraction.
   "extraction_success": "boolean",
   "raw_response": "string",
   "markdown_file_path": "string",
-  "created_at": "datetime",
-  "updated_at": "datetime"
-}
-```
-
-### 5. `marks_mapping_results`
-
-Stores results from Step 4: Marks Mapping.
-
-**Schema:**
-
-```json
-{
-  "_id": "ObjectId",
-  "run_id": "string",
-  "step": "marks_mapping",
-  "marks_mapping": {
-    "question-1": {
-      "question_type": "string",
-      "marks": "string"
-    }
-  },
-  "total_questions": "number",
-  "mapping_success": "boolean",
-  "raw_response": "string",
   "created_at": "datetime",
   "updated_at": "datetime"
 }
@@ -247,7 +232,6 @@ The following indexes are automatically created for optimal performance:
 - **diagram_extraction_results**: `run_id`, `created_at`
 - **diagram_mapping_results**: `run_id`, `created_at`
 - **question_extraction_results**: `run_id`, `created_at`
-- **marks_mapping_results**: `run_id`, `created_at`
 
 ## Benefits
 

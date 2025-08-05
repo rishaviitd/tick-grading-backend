@@ -1,0 +1,18 @@
+# Testing dependencies
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-mock>=3.10.0
+pytest-cov>=4.0.0
+pytest-html>=3.1.0
+
+# Mocking and test utilities
+responses>=0.23.0
+
+# Database testing
+mongomock>=4.1.0
+
+# Image processing for tests
+Pillow>=9.0.0
+
+# Environment and configuration
+python-dotenv>=0.19.0 

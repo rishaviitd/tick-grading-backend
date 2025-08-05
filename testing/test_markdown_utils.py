@@ -1,18 +1,31 @@
-#!/usr/bin/env python3
-"""
-Test script to verify question processing works with new schema
-"""
-
-import asyncio
 import sys
 import os
+import re
 
-# Add the project root to the path
-project_root = os.path.dirname(os.path.abspath(__file__))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
+# Add the project root to the Python path
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, project_root)
 
-from app.question_parsing.question_extraction import strip_markdown_code_blocks
+def strip_markdown_code_blocks(text: str) -> str:
+    """
+    Strip markdown code block delimiters (```) from the input text.
+    
+    Args:
+        text (str): Input markdown text
+    
+    Returns:
+        str: Text with code block delimiters removed, with normalized whitespace
+    """
+    # Use regex to remove code blocks
+    # This handles multiple types of code blocks: ```lang, ```, ```
+    pattern = r'```.*?```'
+    # Remove code blocks
+    stripped_text = re.sub(pattern, '', text, flags=re.DOTALL)
+    
+    # Normalize whitespace: remove multiple consecutive newlines
+    stripped_text = re.sub(r'\n\s*\n', '\n', stripped_text)
+    
+    return stripped_text.strip()
 
 def test_strip_markdown_code_blocks():
     """Test stripping of markdown code block delimiters"""

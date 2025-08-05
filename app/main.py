@@ -286,76 +286,53 @@ async def crop_margins(request: CropRequest):
         # Initialize database integration
         db_integration = get_db_integration()
         
-        # Handle assignment creation and linking
+        # Handle assignment validation and linking
         assignment_id = request.assignment_id
         if not assignment_id:
-            # Create a new assignment for this run_id if none exists
-            try:
-                # Check if an assignment already exists for this run_id
-                assignments_collection = pipeline_db.db_manager.get_collection("assignments")
-                if assignments_collection:
-                    existing_assignment = await assignments_collection.find_one({"run_id": run_id})
-                    if existing_assignment:
-                        assignment_id = str(existing_assignment["_id"])
-                        logger.log_step(run_id, "Found Existing Assignment", 
-                                      f"Using assignment_id: {assignment_id}", 
-                                      "Assignment already exists for this run_id")
-                    else:
-                        # Create new assignment
-                        assignment_id = await db_integration.create_assignment(run_id)
-                        if assignment_id:
-                            logger.log_step(run_id, "Created New Assignment", 
-                                          f"Created assignment_id: {assignment_id}", 
-                                          "New assignment created for response processing")
-                        else:
-                            logger.log_error(run_id, "Failed to create assignment", 
-                                           "Could not create assignment for run_id")
-                            raise HTTPException(status_code=500, detail="Failed to create assignment")
-                else:
-                    logger.log_error(run_id, "Assignments collection not found", 
-                                   "Database collection not available")
-                    raise HTTPException(status_code=500, detail="Database collection not available")
-            except Exception as assignment_error:
-                logger.log_error(run_id, "Assignment creation failed", assignment_error)
-                raise HTTPException(status_code=500, detail=f"Assignment creation failed: {str(assignment_error)}")
+            raise HTTPException(status_code=400, detail="assignment_id is required. Please select an assignment from the dropdown.")
         
-        # Ensure questions are linked to this assignment
-        if assignment_id:
-            try:
-                # Get questions for this run_id
-                questions = await pipeline_db.get_questions_by_run_id(run_id)
+        # Validate that the assignment exists
+        try:
+            assignments_collection = pipeline_db.db_manager.get_collection("assignments")
+            if assignments_collection is None:
+                raise HTTPException(status_code=500, detail="Database collection not available")
+            
+            # Check if the assignment exists
+            assignment = await assignments_collection.find_one({"_id": assignment_id})
+            if assignment is None:
+                raise HTTPException(status_code=404, detail=f"Assignment with ID {assignment_id} not found. Please select a valid assignment.")
+            
+            logger.log_step(run_id, "Assignment Validated", 
+                          f"Using assignment_id: {assignment_id}", 
+                          f"Assignment: {assignment.get('title', 'Unknown')}")
+            
+        except HTTPException:
+            raise
+        except Exception as assignment_error:
+            logger.log_error(run_id, "Assignment validation failed", assignment_error)
+            raise HTTPException(status_code=500, detail=f"Assignment validation failed: {str(assignment_error)}")
+        
+        # Get questions for the selected assignment
+        try:
+            questions_collection = pipeline_db.db_manager.get_collection("questions")
+            if questions_collection is not None:
+                # Get questions that are already linked to this assignment
+                questions = await questions_collection.find({"assignment_id": assignment_id}).to_list(length=None)
+                
                 if questions:
-                    # Check if questions are already linked to this assignment
-                    questions_collection = pipeline_db.db_manager.get_collection("questions")
-                    if questions_collection:
-                        # Update questions to link them to this assignment
-                        question_ids = []
-                        for question in questions:
-                            question_id = str(question["_id"])
-                            question_ids.append(question_id)
-                            
-                            # Update the question's assignment_id if it's different
-                            if question.get("assignment_id") != assignment_id:
-                                await questions_collection.update_one(
-                                    {"_id": question["_id"]},
-                                    {"$set": {"assignment_id": assignment_id}}
-                                )
-                        
-                        # Update assignment with question IDs
-                        await db_integration.update_assignment_questions(assignment_id, question_ids)
-                        logger.log_step(run_id, "Linked Questions to Assignment", 
-                                      f"Linked {len(question_ids)} questions to assignment {assignment_id}", 
-                                      "Questions now properly associated with assignment")
-                    else:
-                        logger.log_error(run_id, "Questions collection not found", 
-                                       "Could not link questions to assignment")
+                    logger.log_step(run_id, "Found Questions for Assignment", 
+                                  f"Found {len(questions)} questions for assignment {assignment_id}", 
+                                  "Questions are already linked to this assignment")
                 else:
                     logger.log_step(run_id, "No Questions Found", 
-                                  f"No questions found for run_id: {run_id}", 
-                                  "Questions may be created later")
-            except Exception as question_link_error:
-                logger.log_error(run_id, "Failed to link questions to assignment", question_link_error)
-                # Don't fail the entire request, just log the error
+                                  f"No questions found for assignment {assignment_id}", 
+                                  "Assignment may not have questions yet")
+            else:
+                logger.log_error(run_id, "Questions collection not found", 
+                               "Could not retrieve questions for assignment")
+        except Exception as question_error:
+            logger.log_error(run_id, "Failed to get questions for assignment", question_error)
+            # Don't fail the entire request, just log the error
         
         from app.utils.identifier_normalizer import normalize_identifier
         
@@ -419,13 +396,15 @@ async def crop_margins(request: CropRequest):
                     "metadata": {
                         "total_questions": 0,
                         "total_responses": len(student_responses),
-                        "total_mappings": 0
+                        "total_mappings": 0,
+                        "total_diagrams": 0,
+                        "total_tables": 0
                     }
                 }
                 
                 # Get teacher information (assuming single teacher for now)
                 teachers_collection = pipeline_db.db_manager.get_collection("teachers")
-                if teachers_collection:
+                if teachers_collection is not None:
                     teacher = await teachers_collection.find_one()
                     if teacher:
                         final_json["teacher"] = {
@@ -437,7 +416,7 @@ async def crop_margins(request: CropRequest):
                 
                 # Get student information
                 students_collection = pipeline_db.db_manager.get_collection("students")
-                if students_collection:
+                if students_collection is not None:
                     student = await students_collection.find_one({"_id": request.student_id})
                     if student:
                         final_json["student"] = {
@@ -447,7 +426,7 @@ async def crop_margins(request: CropRequest):
                 
                 # Get assignment information
                 assignments_collection = pipeline_db.db_manager.get_collection("assignments")
-                if assignments_collection:
+                if assignments_collection is not None:
                     assignment = await assignments_collection.find_one({"_id": assignment_id})
                     if assignment:
                         final_json["assignment"] = {
@@ -457,26 +436,59 @@ async def crop_margins(request: CropRequest):
                         }
                 
                 # Get questions for this assignment
-                questions = await pipeline_db.get_questions_by_run_id(run_id)
-                if questions:
-                    final_json["questions"] = []
-                    for question in questions:
-                        question_data = {
-                            "id": str(question["_id"]),
-                            "assignment_id": question["assignment_id"],
-                            "question_identifier": question["question_identifier"],
-                            "has_internal_choice": question["has_internal_choice"],
-                            "primary_question": question["primary_question"],
-                            "secondary_question": question.get("secondary_question"),
-                            "primary_diagram_url": question.get("primary_diagram_url"),
-                            "secondary_diagram_url": question.get("secondary_diagram_url"),
-                            "table_url": question.get("table_url"),
-                            "primary_marks": question["primary_marks"],
-                            "secondary_marks": question.get("secondary_marks"),
-                            "question_type": question["question_type"]
+                questions_collection = pipeline_db.db_manager.get_collection("questions")
+                if questions_collection is not None:
+                    questions = await questions_collection.find({"assignment_id": assignment_id}).to_list(length=None)
+                    if questions:
+                        final_json["questions"] = []
+                        for question in questions:
+                            question_data = {
+                                "id": str(question["_id"]),
+                                "assignment_id": question["assignment_id"],
+                                "question_identifier": question["question_identifier"],
+                                "has_internal_choice": question["has_internal_choice"],
+                                "primary_question": question["primary_question"],
+                                "secondary_question": question.get("secondary_question"),
+                                "primary_diagram_url": question.get("primary_diagram_url"),
+                                "secondary_diagram_url": question.get("secondary_diagram_url"),
+                                "table_url": question.get("table_url"),
+                                "primary_marks": question["primary_marks"],
+                                "secondary_marks": question.get("secondary_marks"),
+                                "question_type": question["question_type"]
+                            }
+                            final_json["questions"].append(question_data)
+                        final_json["metadata"]["total_questions"] = len(questions)
+                
+                # Get diagrams and tables from the new collections
+                diagrams = await pipeline_db.get_diagrams_by_run_id(run_id)
+                if diagrams:
+                    final_json["diagrams"] = []
+                    for diagram in diagrams:
+                        diagram_data = {
+                            "id": str(diagram["_id"]),
+                            "run_id": diagram["run_id"],
+                            "cloudinary_url": diagram["cloudinary_url"],
+                            "page_number": diagram["page_number"],
+                            "figure_id": diagram["figure_id"],
+                            "created_at": diagram["created_at"].isoformat() if isinstance(diagram["created_at"], datetime) else str(diagram["created_at"])
                         }
-                        final_json["questions"].append(question_data)
-                    final_json["metadata"]["total_questions"] = len(questions)
+                        final_json["diagrams"].append(diagram_data)
+                    final_json["metadata"]["total_diagrams"] = len(diagrams)
+                
+                tables = await pipeline_db.get_tables_by_run_id(run_id)
+                if tables:
+                    final_json["tables"] = []
+                    for table in tables:
+                        table_data = {
+                            "id": str(table["_id"]),
+                            "run_id": table["run_id"],
+                            "cloudinary_url": table["cloudinary_url"],
+                            "page_number": table["page_number"],
+                            "table_id": table["table_id"],
+                            "created_at": table["created_at"].isoformat() if isinstance(table["created_at"], datetime) else str(table["created_at"])
+                        }
+                        final_json["tables"].append(table_data)
+                    final_json["metadata"]["total_tables"] = len(tables)
                 
                 # Add student responses
                 final_json["student_responses"] = {
@@ -491,33 +503,38 @@ async def crop_margins(request: CropRequest):
                     ]
                 }
                 
-                # Get question-response mappings
-                mappings = await pipeline_db.get_question_response_mappings_by_run_id(run_id)
-                if mappings:
-                    final_json["question_response_mappings"] = []
-                    for mapping in mappings:
-                        mapping_data = {
-                            "id": str(mapping["_id"]),
-                            "student_id": mapping["student_id"],
-                            "assignment_id": mapping["assignment_id"],
-                            "run_id": mapping["run_id"],
-                            "question_identifier": mapping["question_identifier"],
-                            "has_internal_choice": mapping["has_internal_choice"],
-                            "primary_question": mapping["primary_question"],
-                            "secondary_question": mapping.get("secondary_question"),
-                            "primary_diagram_url": mapping.get("primary_diagram_url"),
-                            "secondary_diagram_url": mapping.get("secondary_diagram_url"),
-                            "table_url": mapping.get("table_url"),
-                            "primary_marks": mapping["primary_marks"],
-                            "secondary_marks": mapping.get("secondary_marks"),
-                            "question_type": mapping["question_type"],
-                            "response_cloudinary_url": mapping["response_cloudinary_url"]
-                        }
-                        final_json["question_response_mappings"].append(mapping_data)
-                    final_json["metadata"]["total_mappings"] = len(mappings)
+                # Get question-response mappings for this student and assignment
+                mappings_collection = pipeline_db.db_manager.get_collection("question_response_mappings")
+                if mappings_collection is not None:
+                    mappings = await mappings_collection.find({
+                        "student_id": request.student_id,
+                        "assignment_id": assignment_id
+                    }).to_list(length=None)
+                    if mappings:
+                        final_json["question_response_mappings"] = []
+                        for mapping in mappings:
+                            mapping_data = {
+                                "id": str(mapping["_id"]),
+                                "student_id": mapping["student_id"],
+                                "assignment_id": mapping["assignment_id"],
+                                "run_id": mapping["run_id"],
+                                "question_identifier": mapping["question_identifier"],
+                                "has_internal_choice": mapping["has_internal_choice"],
+                                "primary_question": mapping["primary_question"],
+                                "secondary_question": mapping.get("secondary_question"),
+                                "primary_diagram_url": mapping.get("primary_diagram_url"),
+                                "secondary_diagram_url": mapping.get("secondary_diagram_url"),
+                                "table_url": mapping.get("table_url"),
+                                "primary_marks": mapping["primary_marks"],
+                                "secondary_marks": mapping.get("secondary_marks"),
+                                "question_type": mapping["question_type"],
+                                "response_cloudinary_url": mapping["response_cloudinary_url"]
+                            }
+                            final_json["question_response_mappings"].append(mapping_data)
+                        final_json["metadata"]["total_mappings"] = len(mappings)
                 
                 logger.log_step(run_id, "Final JSON Generated", 
-                              f"Consolidated data with {final_json['metadata']['total_questions']} questions, {final_json['metadata']['total_responses']} responses, {final_json['metadata']['total_mappings']} mappings",
+                              f"Consolidated data with {final_json['metadata']['total_questions']} questions, {final_json['metadata']['total_responses']} responses, {final_json['metadata']['total_mappings']} mappings, {final_json['metadata']['total_diagrams']} diagrams, {final_json['metadata']['total_tables']} tables",
                               "Complete workflow data consolidated")
                 
             except Exception as json_error:
@@ -530,7 +547,8 @@ async def crop_margins(request: CropRequest):
         # Return success message with final JSON
         response_data.update({
             "message": "Response processing completed and saved to database", 
-            "run_id": run_id
+            "run_id": run_id,
+            "assignment_id": assignment_id
         })
         
         # Add student information to response if provided
@@ -851,7 +869,9 @@ async def get_final_consolidated_json(run_id: str):
             "metadata": {
                 "total_questions": 0,
                 "total_responses": 0,
-                "total_mappings": 0
+                "total_mappings": 0,
+                "total_diagrams": 0,
+                "total_tables": 0
             }
         }
         
@@ -870,7 +890,7 @@ async def get_final_consolidated_json(run_id: str):
         # Get student information
         students_collection = pipeline_db.db_manager.get_collection("students")
         if students_collection is not None:
-            student = await students_collection.find_one({"_id": request.student_id})
+            student = await students_collection.find_one({"_id": student_id})
             if student:
                 final_json["student"] = {
                     "id": str(student["_id"]),
@@ -909,6 +929,37 @@ async def get_final_consolidated_json(run_id: str):
                 }
                 final_json["questions"].append(question_data)
             final_json["metadata"]["total_questions"] = len(questions)
+        
+        # Get diagrams and tables from the new collections
+        diagrams = await pipeline_db.get_diagrams_by_run_id(run_id)
+        if diagrams:
+            final_json["diagrams"] = []
+            for diagram in diagrams:
+                diagram_data = {
+                    "id": str(diagram["_id"]),
+                    "run_id": diagram["run_id"],
+                    "cloudinary_url": diagram["cloudinary_url"],
+                    "page_number": diagram["page_number"],
+                    "figure_id": diagram["figure_id"],
+                    "created_at": diagram["created_at"].isoformat() if isinstance(diagram["created_at"], datetime) else str(diagram["created_at"])
+                }
+                final_json["diagrams"].append(diagram_data)
+            final_json["metadata"]["total_diagrams"] = len(diagrams)
+        
+        tables = await pipeline_db.get_tables_by_run_id(run_id)
+        if tables:
+            final_json["tables"] = []
+            for table in tables:
+                table_data = {
+                    "id": str(table["_id"]),
+                    "run_id": table["run_id"],
+                    "cloudinary_url": table["cloudinary_url"],
+                    "page_number": table["page_number"],
+                    "table_id": table["table_id"],
+                    "created_at": table["created_at"].isoformat() if isinstance(table["created_at"], datetime) else str(table["created_at"])
+                }
+                final_json["tables"].append(table_data)
+            final_json["metadata"]["total_tables"] = len(tables)
         
         # Get student responses
         if responses_data:

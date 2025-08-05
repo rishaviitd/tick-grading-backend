@@ -6,7 +6,7 @@ in the CBSE question paper processing pipeline and the core business logic entit
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
@@ -35,6 +35,40 @@ class PyObjectId(ObjectId):
 # =============================================================================
 # CORE BUSINESS LOGIC SCHEMAS
 # =============================================================================
+
+class Diagram(BaseModel):
+    """Schema for Diagram entity"""
+    # VE fields (updated during visual extraction)
+    diagram_url: str = Field(..., description="Cloudinary URL for the diagram image")
+    diagram_identifier: str = Field(..., description="Diagram identifier")
+    
+    # VM fields (updated during visual mapping)
+    question_identifier: Optional[str] = Field(None, description="Question number/identifier")
+    choice_location: Optional[str] = Field(None, description="Location in internal choice (first/second/both/null)")
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+
+
+class Table(BaseModel):
+    """Schema for Table entity"""
+    # VE fields (updated during visual extraction)
+    table_url: str = Field(..., description="Cloudinary URL for the table image")
+    table_identifier: str = Field(..., description="Table identifier")
+    
+    # VM fields (updated during visual mapping)
+    question_identifier: Optional[str] = Field(None, description="Question number/identifier")
+    choice_location: Optional[str] = Field(None, description="Location in internal choice (first/second/both/null)")
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+
 
 class Teacher(BaseModel):
     """Schema for Teacher entity"""
@@ -70,13 +104,36 @@ class Student(BaseModel):
     }
 
 
+class VisualContent(BaseModel):
+    """Schema for Visual Content entity - central hub for visual content management"""
+    # Visual content references (populated after VE completion)
+    tables: List[str] = Field(default_factory=list, description="List of table object IDs")
+    diagrams: List[str] = Field(default_factory=list, description="List of diagram object IDs")
+    
+    # Overview images (available before VM)
+    overview_image_tables: Optional[str] = Field(None, description="Cloudinary URL for tables overview image")
+    overview_image_diagrams: Optional[str] = Field(None, description="Cloudinary URL for diagrams overview image")
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+
+
 class Assignment(BaseModel):
     """Schema for Assignment entity"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
     run_id: str = Field(..., description="Unique run identifier from question processing")
     title: str = Field(..., description="Assignment title/name")
     total_marks: int = Field(..., description="Total marks for the assignment")
-    questions: List[str] = Field(default_factory=list, description="List of question IDs")
+    
+    # Content references
+    visual_content_id: Optional[str] = Field(None, description="Reference to Visual_content")
+    question_content_id: Optional[str] = Field(None, description="Reference to Question_content")
+    marks_content_id: Optional[str] = Field(None, description="Reference to Marks_content")
+    
+    # Questions array - populated by question_parsing_consolidation
+    questions: Optional[List[Dict[str, Any]]] = Field(None, description="Array of question mappings with question_identifier and question_id")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -90,30 +147,18 @@ class Assignment(BaseModel):
 
 
 class Question(BaseModel):
-    """Schema for Question entity"""
+    """Schema for Question entity - simplified structure for question_parsing_consolidation"""
     id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    assignment_id: str = Field(..., description="Assignment ID this question belongs to")
-    run_id: str = Field(..., description="Unique run identifier from question processing")
-    
-    # Question identification
-    question_identifier: str = Field(..., description="Question number/identifier")
-    has_internal_choice: bool = Field(..., description="Whether question has internal choice")
     
     # Question content
-    primary_question: str = Field(..., description="Primary question text")
-    secondary_question: Optional[str] = Field(None, description="Secondary question text (for internal choice)")
+    question_text: str = Field(..., description="The actual question text content")
+    question_marks: Union[int, float] = Field(..., description="Numerical marks allocation for the question")
+    question_marks_analysis: str = Field(..., description="Detailed marks analysis/description")
+    question_type: str = Field(..., description="Type of question (MCQ/Assertion Reasoning/Case Study/Normal Subjective/Internal Choice Subjective)")
     
-    # Diagram URLs
-    primary_diagram_url: Optional[str] = Field(None, description="Cloudinary URL for primary diagram")
-    secondary_diagram_url: Optional[str] = Field(None, description="Cloudinary URL for secondary diagram")
-    table_url: Optional[str] = Field(None, description="Cloudinary URL for table")
-    
-    # Marks
-    primary_marks: str = Field(..., description="Primary marks allocation")
-    secondary_marks: Optional[str] = Field(None, description="Secondary marks allocation (for internal choice)")
-    
-    # Question type
-    question_type: str = Field(..., description="Type of question (MCQ/Assertion Reasoning/Case Study/Normal Subjective/Internal Choice)")
+    # Visual content URLs
+    diagram_url: Optional[str] = Field(None, description="Cloudinary URL for diagram (if applicable)")
+    table_url: Optional[str] = Field(None, description="Cloudinary URL for table (if applicable)")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
@@ -124,6 +169,9 @@ class Question(BaseModel):
         "arbitrary_types_allowed": True,
         "json_encoders": {ObjectId: str}
     }
+
+
+
 
 
 class StudentResponse(BaseModel):
@@ -167,16 +215,12 @@ class QuestionResponseMapping(BaseModel):
     run_id: str = Field(..., description="Unique run identifier from response processing")
     
     # Question data (from Question entity)
-    question_identifier: str = Field(..., description="Question number/identifier")
-    has_internal_choice: bool = Field(..., description="Whether question has internal choice")
-    primary_question: str = Field(..., description="Primary question text")
-    secondary_question: Optional[str] = Field(None, description="Secondary question text (for internal choice)")
-    primary_diagram_url: Optional[str] = Field(None, description="Cloudinary URL for primary diagram")
-    secondary_diagram_url: Optional[str] = Field(None, description="Cloudinary URL for secondary diagram")
-    table_url: Optional[str] = Field(None, description="Cloudinary URL for table")
-    primary_marks: str = Field(..., description="Primary marks allocation")
-    secondary_marks: Optional[str] = Field(None, description="Secondary marks allocation (for internal choice)")
-    question_type: str = Field(..., description="Type of question")
+    question_text: str = Field(..., description="The actual question text content")
+    question_marks: Union[int, float] = Field(..., description="Numerical marks allocation for the question")
+    question_marks_analysis: str = Field(..., description="Detailed marks analysis/description")
+    question_type: str = Field(..., description="Type of question (MCQ/Assertion Reasoning/Case Study/Normal Subjective/Internal Choice Subjective)")
+    diagram_url: Optional[str] = Field(None, description="Cloudinary URL for diagram (if applicable)")
+    table_url: Optional[str] = Field(None, description="Cloudinary URL for table (if applicable)")
     
     # Response data
     response_cloudinary_url: str = Field(..., description="Cloudinary URL for the student response")
@@ -192,173 +236,40 @@ class QuestionResponseMapping(BaseModel):
     }
 
 
+class QuestionContent(BaseModel):
+    """Schema for Question Content entity - stores extracted questions from PDF"""
+    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
+    run_id: str = Field(..., description="Unique run identifier from question processing")
+    
+    # Question content
+    questions_markdown: str = Field(..., description="The extracted questions in markdown format")
+    extraction_success: bool = Field(..., description="Boolean indicating if extraction was successful")
+    raw_response: Optional[str] = Field(None, description="Raw response from the extraction process")
+    
+    # Parsed questions structure
+    questions: Optional[List[Dict[str, Any]]] = Field(None, description="Parsed questions with internal choice detection")
+    total_questions: Optional[int] = Field(None, description="Total number of questions")
+    questions_with_internal_choice: Optional[int] = Field(None, description="Number of questions with internal choice")
+    questions_without_internal_choice: Optional[int] = Field(None, description="Number of questions without internal choice")
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    model_config = {
+        "populate_by_name": True,
+        "arbitrary_types_allowed": True,
+        "json_encoders": {ObjectId: str}
+    }
+
+
+
+
+
 # =============================================================================
-# PIPELINE PROCESSING SCHEMAS (LEGACY - KEPT FOR BACKWARD COMPATIBILITY)
 # =============================================================================
-
-class DiagramExtractionResult(BaseModel):
-    """Schema for Step 1: Diagram Extraction results"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    run_id: str = Field(..., description="Unique run identifier")
-    step: str = Field(default="diagram_extraction", description="Step identifier")
-    
-    # Extraction metadata
-    total_figures: int = Field(..., description="Total number of figures extracted")
-    pages_processed: int = Field(..., description="Number of pages processed")
-    extraction_success: bool = Field(..., description="Whether extraction was successful")
-    
-    # Figure details
-    figures: List[Dict[str, Any]] = Field(default_factory=list, description="List of extracted figures")
-    
-    # File references
-    figure_files: List[str] = Field(default_factory=list, description="List of figure file paths")
-    overview_image_path: Optional[str] = Field(None, description="Path to overview image")
-    
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-        "json_encoders": {ObjectId: str}
-    }
-
-
-class DiagramMappingEntry(BaseModel):
-    """Schema for individual diagram mapping entry"""
-    question_identifier: str = Field(..., description="Question number/identifier")
-    choice_location: str = Field(..., description="Location in internal choice (first/second/both/null)")
-    cloudinary_url: Optional[str] = Field(None, description="Cloudinary URL for the figure")
-
-
-class DiagramMappingResult(BaseModel):
-    """Schema for Step 2: Diagram Mapping results"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    run_id: str = Field(..., description="Unique run identifier")
-    step: str = Field(default="diagram_mapping", description="Step identifier")
-    
-    # Mapping data
-    mapping: Dict[str, DiagramMappingEntry] = Field(..., description="Figure to question mapping")
-    total_mappings: int = Field(..., description="Total number of mappings created")
-    
-    # Processing metadata
-    mapping_success: bool = Field(..., description="Whether mapping was successful")
-    raw_response: Optional[str] = Field(None, description="Raw response from Gemini AI")
-    
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-        "json_encoders": {ObjectId: str}
-    }
-
-
-class QuestionExtractionResult(BaseModel):
-    """Schema for Step 3: Question Extraction results"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    run_id: str = Field(..., description="Unique run identifier")
-    step: str = Field(default="question_extraction", description="Step identifier")
-    
-    # Question data
-    questions_markdown: str = Field(..., description="Questions in markdown format")
-    questions_count: int = Field(..., description="Total number of questions extracted")
-    content_length: int = Field(..., description="Length of markdown content in characters")
-    
-    # Processing metadata
-    extraction_success: bool = Field(..., description="Whether extraction was successful")
-    raw_response: Optional[str] = Field(None, description="Raw response from Gemini AI")
-    
-    # File reference
-    markdown_file_path: Optional[str] = Field(None, description="Path to markdown file")
-    
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-        "json_encoders": {ObjectId: str}
-    }
-
-
-class MarksMappingEntry(BaseModel):
-    """Schema for individual marks mapping entry"""
-    question_type: str = Field(..., description="Type of question (MCQ/Case Study/Normal Subjective/etc.)")
-    marks: List[str] = Field(..., description="Marks allocation description (list for internal choice, single item for others)")
-
-
-class MarksMappingResult(BaseModel):
-    """Schema for Step 4: Marks Mapping results"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    run_id: str = Field(..., description="Unique run identifier")
-    step: str = Field(default="marks_mapping", description="Step identifier")
-    
-    # Mapping data
-    marks_mapping: Dict[str, MarksMappingEntry] = Field(..., description="Question to marks mapping")
-    total_questions: int = Field(..., description="Total number of questions mapped")
-    
-    # Processing metadata
-    mapping_success: bool = Field(..., description="Whether mapping was successful")
-    raw_response: Optional[str] = Field(None, description="Raw response from Gemini AI")
-    
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-        "json_encoders": {ObjectId: str}
-    }
-
-
-class ProcessingStep(BaseModel):
-    """Schema for individual processing step"""
-    name: str = Field(..., description="Step name")
-    timestamp: datetime = Field(..., description="Step timestamp")
-    input: str = Field(..., description="Step input")
-    output: str = Field(..., description="Step output")
-
-
-class PipelineResult(BaseModel):
-    """Schema for complete pipeline result"""
-    id: Optional[PyObjectId] = Field(default_factory=PyObjectId, alias="_id")
-    run_id: str = Field(..., description="Unique run identifier")
-    
-    # Pipeline metadata
-    title: str = Field(..., description="Pipeline title")
-    log_type: str = Field(..., description="Type of processing")
-    status: str = Field(..., description="Pipeline status (active/completed/failed)")
-    
-    # File information
-    original_filename: str = Field(..., description="Original uploaded filename")
-    file_size: Optional[int] = Field(None, description="File size in bytes")
-    
-    # Step results
-    steps: List[ProcessingStep] = Field(default_factory=list, description="Processing steps")
-    step_results: Dict[str, Dict[str, Any]] = Field(default_factory=dict, description="Detailed step results")
-    
-    # Final outputs
-    final_outputs: Dict[str, Any] = Field(default_factory=dict, description="Final pipeline outputs")
-    
-    # Error handling
-    errors: List[str] = Field(default_factory=list, description="List of errors encountered")
-    
-    # Timestamps
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
-    completed_at: Optional[datetime] = Field(None, description="Completion timestamp")
-    
-    model_config = {
-        "populate_by_name": True,
-        "arbitrary_types_allowed": True,
-        "json_encoders": {ObjectId: str}
-    }
+# DATABASE COLLECTION NAMES
+# =============================================================================
 
 
 # =============================================================================
@@ -371,27 +282,24 @@ COLLECTION_NAMES = {
     "students": "students", 
     "assignments": "assignments",
     "questions": "questions",
+
     "student_assignment_responses": "student_assignment_responses",
     "question_response_mappings": "question_response_mappings",
     
-    # Legacy pipeline processing collections
-    "pipeline_results": "pipeline_results",
-    "diagram_extraction": "diagram_extraction_results",
-    "diagram_mapping": "diagram_mapping_results", 
-    "question_extraction": "question_extraction_results",
-    "marks_mapping": "marks_mapping_results",
+    # Visual content collections
+    "diagrams": "diagrams",
+    "tables": "tables",
+    "visual_content": "visual_content",
+    
+    # Pipeline step results collections
+    "question_content": "question_content",
+    "marks_content": "marks_content",
 }
 
 # Database indexes for optimal performance
 INDEXES = {
-    "pipeline_results": [
-        [("run_id", 1)],
-        [("created_at", -1)]
-    ],
     "questions": [
-        [("run_id", 1)],
-        [("assignment_id", 1)],
-        [("question_identifier", 1)]
+        [("run_id", 1)]
     ],
     "student_assignment_responses": [
         [("run_id", 1)],
@@ -401,10 +309,26 @@ INDEXES = {
     "question_response_mappings": [
         [("run_id", 1)],
         [("student_id", 1)],
-        [("assignment_id", 1)],
-        [("question_identifier", 1)]
+        [("assignment_id", 1)]
     ],
     "assignments": [
         [("run_id", 1)]
-    ]
+    ],
+    "diagrams": [
+        [("diagram_identifier", 1)]
+    ],
+    "tables": [
+        [("table_identifier", 1)]
+    ],
+    "visual_content": [
+        [("tables", 1)],
+        [("diagrams", 1)]
+    ],
+    "question_content": [
+        [("run_id", 1)]
+    ],
+    "marks_content": [
+        [("run_id", 1)]
+    ],
+
 } 

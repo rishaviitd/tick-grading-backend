@@ -6,28 +6,22 @@ CBSE processing pipeline, allowing automatic saving of results to MongoDB.
 """
 
 import os
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, Union
 from datetime import datetime
 
 from .connection import pipeline_db, initialize_database
 from .schema import (
     # Core business logic schemas
     Teacher, Student, Assignment, Question, StudentResponse, StudentAssignmentResponse, QuestionResponseMapping,
-    
-    # Legacy pipeline processing schemas
-    PipelineResult, DiagramExtractionResult, DiagramMappingResult,
-    QuestionExtractionResult, MarksMappingResult, ProcessingStep,
-    DiagramMappingEntry, MarksMappingEntry
+    Diagram, Table, VisualContent, QuestionContent
 )
 
 
-class PipelineDatabaseIntegration:
-    """Integrates database operations with the processing pipeline"""
+class DatabaseIntegration:
+    """Integrates database operations with the application"""
     
     def __init__(self):
         self.db_initialized = False
-        self.current_run_id: Optional[str] = None
-        self.pipeline_data: Dict[str, Any] = {}
     
     async def initialize(self) -> bool:
         """Initialize database connection"""
@@ -35,264 +29,361 @@ class PipelineDatabaseIntegration:
             self.db_initialized = await initialize_database()
         return self.db_initialized
     
-    async def start_pipeline(self, run_id: str, title: str, filename: str, file_size: Optional[int] = None) -> bool:
-        """Start a new pipeline and save initial data"""
+    async def save_diagram(self, diagram_url: str, diagram_identifier: str) -> Optional[str]:
+        """Save a single diagram to the diagrams collection"""
         if not await self.initialize():
-            return False
+            return None
         
-        self.current_run_id = run_id
-        
-        # Create initial pipeline result
-        pipeline_result = PipelineResult(
-            run_id=run_id,
-            title=title,
-            log_type="question_extraction",
-            status="active",
-            original_filename=filename,
-            file_size=file_size,
-            steps=[],
-            step_results={},
-            final_outputs={},
-            errors=[],
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+        diagram = Diagram(
+            diagram_url=diagram_url,
+            diagram_identifier=diagram_identifier
         )
         
-        # Save to database
-        success = await pipeline_db.save_pipeline_result(pipeline_result)
-        if success:
-            self.pipeline_data = pipeline_result.dict()
-        
-        return success
+        return await pipeline_db.save_diagram(diagram)
     
-    async def save_step_log(self, step_name: str, input_data: str, output_data: str) -> bool:
-        """Save a processing step log"""
-        if not self.current_run_id:
-            return False
+    async def save_table(self, table_url: str, table_identifier: str) -> Optional[str]:
+        """Save a single table to the tables collection"""
+        if not await self.initialize():
+            return None
         
-        # Create processing step
-        step = ProcessingStep(
-            name=step_name,
-            timestamp=datetime.utcnow(),
-            input=input_data,
-            output=output_data
+        table = Table(
+            table_url=table_url,
+            table_identifier=table_identifier
         )
         
-        # Add to pipeline data
-        if "steps" not in self.pipeline_data:
-            self.pipeline_data["steps"] = []
-        self.pipeline_data["steps"].append(step.dict())
-        
-        # Update in database
-        return await self._update_pipeline_data()
+        return await pipeline_db.save_table(table)
     
-    async def save_step_result(self, step_name: str, step_data: Dict[str, Any]) -> bool:
-        """Save detailed step results"""
-        if not self.current_run_id:
-            return False
-        
-        # Add to pipeline data
-        if "step_results" not in self.pipeline_data:
-            self.pipeline_data["step_results"] = {}
-        self.pipeline_data["step_results"][step_name] = step_data
-        
-        # Update in database
-        return await self._update_pipeline_data()
-    
-    async def save_diagram_extraction_result(self, run_id: str, total_figures: int, pages_processed: int, 
-                                     figure_files: List[str], overview_image_path: Optional[str] = None) -> bool:
-        """Save diagram extraction results"""
+    async def save_visual_content(self, tables: List[str] = None, diagrams: List[str] = None,
+                                 overview_image_tables: str = None, overview_image_diagrams: str = None) -> Optional[str]:
+        """Save visual content to the visual_content collection"""
         if not await self.initialize():
-            return False
+            return None
         
-        extraction_result = DiagramExtractionResult(
-            run_id=run_id,
-            total_figures=total_figures,
-            pages_processed=pages_processed,
-            extraction_success=True,
-            figure_files=figure_files,
-            overview_image_path=overview_image_path,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
+        visual_content = VisualContent(
+            tables=tables or [],
+            diagrams=diagrams or [],
+            overview_image_tables=overview_image_tables,
+            overview_image_diagrams=overview_image_diagrams
         )
         
-        return await pipeline_db.save_diagram_extraction(extraction_result)
+        return await pipeline_db.save_visual_content(visual_content)
     
-    async def save_diagram_mapping_result(self, run_id: str, mapping_json: Dict[str, Any], 
-                                  raw_response: Optional[str] = None) -> bool:
-        """Save diagram mapping results"""
+    async def save_question_content(self, run_id: str, questions_markdown: str, 
+                                   extraction_success: bool = True, raw_response: str = None,
+                                   parsed_questions: Dict[str, Any] = None) -> Optional[str]:
+        """Save question content to the question_content collection"""
         if not await self.initialize():
-            return False
+            return None
         
-        # Convert mapping JSON to proper format
-        mapping_entries = {}
-        for figure_key, mapping_data in mapping_json.items():
-            entry = DiagramMappingEntry(
-                question_identifier=mapping_data.get("question_identifier", ""),
-                choice_location=mapping_data.get("choice_location", "null"),
-                cloudinary_url=mapping_data.get("cloudinary_url", "")
+        try:
+            question_content = QuestionContent(
+                run_id=run_id,
+                questions_markdown=questions_markdown,
+                extraction_success=extraction_success,
+                raw_response=raw_response,
+                questions=parsed_questions.get("questions") if parsed_questions else None,
+                total_questions=parsed_questions.get("total_questions") if parsed_questions else None,
+                questions_with_internal_choice=parsed_questions.get("questions_with_internal_choice") if parsed_questions else None,
+                questions_without_internal_choice=parsed_questions.get("questions_without_internal_choice") if parsed_questions else None,
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow()
             )
-            mapping_entries[figure_key] = entry
-        
-        mapping_result = DiagramMappingResult(
-            run_id=run_id,
-            mapping=mapping_entries,
-            total_mappings=len(mapping_entries),
-            mapping_success=True,
-            raw_response=raw_response,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        
-        return await pipeline_db.save_diagram_mapping(mapping_result)
-    
-    async def save_question_extraction_result(self, run_id: str, questions_markdown: str, 
-                                      markdown_file_path: Optional[str] = None,
-                                      raw_response: Optional[str] = None) -> bool:
-        """Save question extraction results"""
-        if not await self.initialize():
-            return False
-        
-        # Count questions (simple count of [####] markers)
-        questions_count = questions_markdown.count("[####]")
-        
-        extraction_result = QuestionExtractionResult(
-            run_id=run_id,
-            questions_markdown=questions_markdown,
-            questions_count=questions_count,
-            content_length=len(questions_markdown),
-            extraction_success=True,
-            raw_response=raw_response,
-            markdown_file_path=markdown_file_path,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        
-        return await pipeline_db.save_question_extraction(extraction_result)
-    
-    async def save_marks_mapping_result(self, run_id: str, marks_json: Dict[str, Any],
-                                raw_response: Optional[str] = None) -> bool:
-        """Save marks mapping results"""
-        if not await self.initialize():
-            return False
-        
-        # Convert marks JSON to proper format
-        marks_entries = {}
-        for question_key, marks_data in marks_json.items():
-            # Handle marks data that might be a list or string
-            marks_value = marks_data.get("marks", "")
-            if isinstance(marks_value, list):
-                # Already a list, use as is
-                marks_list = [str(mark) for mark in marks_value]
-            elif isinstance(marks_value, str):
-                # Single string, convert to list
-                marks_list = [marks_value]
-            else:
-                # Convert any other type to list
-                marks_list = [str(marks_value)]
             
-            entry = MarksMappingEntry(
-                question_type=marks_data.get("question_type", ""),
-                marks=marks_list
-            )
-            marks_entries[question_key] = entry
-        
-        mapping_result = MarksMappingResult(
-            run_id=run_id,
-            marks_mapping=marks_entries,
-            total_questions=len(marks_entries),
-            mapping_success=True,
-            raw_response=raw_response,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
-        
-        return await pipeline_db.save_marks_mapping(mapping_result)
+            return await pipeline_db.save_question_content(question_content)
+            
+        except Exception as e:
+            print(f"Error saving question content: {e}")
+            return None
     
-    async def combine_and_save_questions(self, run_id: str, assignment_title: str = None, assignment_marks: int = None) -> bool:
-        """Combine data from all steps and save questions to database with assignment"""
+    async def save_question_content_with_assignment_update(self, run_id: str, questions_markdown: str, 
+                                                          assignment_id: str, extraction_success: bool = True, 
+                                                          raw_response: str = None, parsed_questions: Dict[str, Any] = None) -> Optional[str]:
+        """Save question content and update assignment with question_content_id"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            # Save question content
+            question_content_id = await self.save_question_content(
+                run_id=run_id,
+                questions_markdown=questions_markdown,
+                extraction_success=extraction_success,
+                raw_response=raw_response,
+                parsed_questions=parsed_questions
+            )
+            
+            if question_content_id:
+                # Update assignment with question_content_id
+                success = await self.update_assignment_question_content(assignment_id, question_content_id)
+                if success:
+                    print(f"  - Assignment updated with question content ID: {question_content_id}")
+                else:
+                    print(f"  - Failed to update assignment with question content ID: {question_content_id}")
+                
+                return question_content_id
+            else:
+                print("  - Failed to save question content")
+                return None
+                
+        except Exception as e:
+            print(f"Error saving question content with assignment update: {e}")
+            return None
+    
+    async def save_marks_content(self, run_id: str, marks_mapping: Dict[str, Any], 
+                                total_questions: int, mapping_success: bool = True, 
+                                raw_response: str = None) -> Optional[str]:
+        """Save marks mapping data to the marks_content collection"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["marks_content"])
+            if collection is None:
+                print("Marks content collection not found")
+                return None
+            
+            # Create document for marks_content collection
+            marks_content_doc = {
+                "run_id": run_id,
+                "marks_mapping": marks_mapping,
+                "total_questions": total_questions,
+                "mapping_success": mapping_success,
+                "raw_response": raw_response,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            result = await collection.insert_one(marks_content_doc)
+            print(f"Saved marks content with ID: {result.inserted_id}")
+            return str(result.inserted_id)
+            
+        except Exception as e:
+            print(f"Error saving marks content: {e}")
+            return None
+    
+    async def save_marks_content_with_assignment_update(self, run_id: str, marks_mapping: Dict[str, Any], 
+                                                       total_questions: int, assignment_id: str, 
+                                                       mapping_success: bool = True, raw_response: str = None) -> Optional[str]:
+        """Save marks content and update assignment with marks_content_id"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            # Save marks content
+            marks_content_id = await self.save_marks_content(
+                run_id=run_id,
+                marks_mapping=marks_mapping,
+                total_questions=total_questions,
+                mapping_success=mapping_success,
+                raw_response=raw_response
+            )
+            
+            if marks_content_id:
+                # Update assignment with marks_content_id
+                success = await self.update_assignment_marks_content(assignment_id, marks_content_id)
+                if success:
+                    print(f"  - Assignment updated with marks content ID: {marks_content_id}")
+                else:
+                    print(f"  - Failed to update assignment with marks content ID: {marks_content_id}")
+                
+                return marks_content_id
+            else:
+                print("  - Failed to save marks content")
+                return None
+                
+        except Exception as e:
+            print(f"Error saving marks content with assignment update: {e}")
+            return None
+    
+
+    
+    async def save_visual_extraction_result(self, run_id: str, total_figures: int, pages_processed: int,
+                                          figures: List[Dict[str, Any]], overview_image_figures: str = None,
+                                          tables: List[Dict[str, Any]] = None, overview_image_tables: str = None,
+                                          assignment_id: str = None) -> Optional[str]:
+        """Save visual extraction results to database with new schema (diagrams and tables saved to separate collections)"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            # Save individual diagrams to diagrams collection
+            diagram_ids = []
+            for figure_data in figures:
+                diagram_url = figure_data.get("cloudinary_url")
+                diagram_identifier = f"figure-{figure_data.get('figure_counter', 'unknown')}"
+                if diagram_url:
+                    diagram_id = await self.save_diagram(diagram_url, diagram_identifier)
+                    if diagram_id:
+                        diagram_ids.append(diagram_id)
+            
+            # Save individual tables to tables collection
+            table_ids = []
+            if tables:
+                for table_data in tables:
+                    table_url = table_data.get("cloudinary_url")
+                    table_identifier = f"table-{table_data.get('table_counter', 'unknown')}"
+                    if table_url:
+                        table_id = await self.save_table(table_url, table_identifier)
+                        if table_id:
+                            table_ids.append(table_id)
+            
+            # Save visual content with references to diagrams and tables
+            visual_content_id = await self.save_visual_content(
+                tables=table_ids,
+                diagrams=diagram_ids,
+                overview_image_tables=overview_image_tables,
+                overview_image_diagrams=overview_image_figures
+            )
+            
+            # Update assignment with visual content ID if provided
+            if assignment_id and visual_content_id:
+                await self.update_assignment_visual_content(assignment_id, visual_content_id)
+                print(f"  - Assignment updated with visual content ID: {visual_content_id}")
+            
+            print(f"Visual extraction result saved:")
+            print(f"  - Run ID: {run_id}")
+            print(f"  - Total figures: {total_figures}")
+            print(f"  - Pages processed: {pages_processed}")
+            print(f"  - Diagrams saved: {len(diagram_ids)}")
+            print(f"  - Tables saved: {len(table_ids)}")
+            print(f"  - Visual content ID: {visual_content_id}")
+            
+            return visual_content_id
+            
+        except Exception as e:
+            print(f"Error saving visual extraction result: {e}")
+            return None
+    
+    async def start_pipeline(self, run_id: str, title: str, filename: str, file_size: int, total_marks: int = None) -> Optional[str]:
+        """Initialize a new pipeline run in the database and create assignment"""
+        if not await self.initialize():
+            return None
+        
+        try:
+            print(f"Starting pipeline: {title}")
+            print(f"  - Run ID: {run_id}")
+            print(f"  - Filename: {filename}")
+            print(f"  - File size: {file_size} bytes")
+            print(f"  - Total marks: {total_marks}")
+            
+            # Create assignment without visual_content_id initially (will be updated after Step 1)
+            assignment_id = await self.create_assignment(run_id, title, total_marks)
+            if assignment_id:
+                print(f"  - Assignment created with ID: {assignment_id}")
+                return assignment_id
+            else:
+                print("  - Failed to create assignment")
+                return None
+                
+        except Exception as e:
+            print(f"Error starting pipeline: {e}")
+            return None
+    
+    async def complete_pipeline(self, run_id: str, assignment_id: str, success: bool = True) -> bool:
+        """Mark pipeline as completed"""
         if not await self.initialize():
             return False
         
         try:
-            # Get data from all previous steps
-            print(f"Retrieving data for question combination: run_id={run_id}")
-            question_extraction = await self._get_question_extraction_data(run_id)
-            marks_mapping = await self._get_marks_mapping_data(run_id)
-            diagram_mapping = await self._get_diagram_mapping_data(run_id)
+            status = "completed successfully" if success else "failed"
+            print(f"Pipeline {status} for run_id: {run_id}")
+            print(f"  - Assignment ID: {assignment_id}")
+            return True
+        except Exception as e:
+            print(f"Error completing pipeline: {e}")
+            return False
+    
+    async def update_visual_content_mapping(self, mapping_data: Dict[str, Any]) -> bool:
+        """Update visual content with mapping results (VM fields)"""
+        if not await self.initialize():
+            return False
+        
+        try:
+            print(f"Updating visual content mapping with data: {mapping_data}")
             
-            print(f"Data retrieval results:")
-            print(f"  - Question extraction: {'Found' if question_extraction else 'Missing'}")
-            print(f"  - Marks mapping: {'Found' if marks_mapping else 'Missing'}")
-            print(f"  - Diagram mapping: {'Found' if diagram_mapping else 'Missing'}")
+            # Update diagrams with mapping data
+            if "figures" in mapping_data:
+                for figure_identifier, mapping_info in mapping_data["figures"].items():
+                    # Find diagram by identifier
+                    diagram = await pipeline_db.get_diagram_by_identifier(figure_identifier)
+                    if diagram:
+                        diagram_id = str(diagram.get("_id"))
+                        await pipeline_db.update_diagram_mapping(
+                            diagram_id=diagram_id,
+                            question_identifier=mapping_info.get("question_identifier"),
+                            choice_location=mapping_info.get("choice_location")
+                        )
+                        print(f"Updated diagram {diagram_id} ({figure_identifier}) with question_identifier: {mapping_info.get('question_identifier')}, choice_location: {mapping_info.get('choice_location')}")
+                    else:
+                        print(f"Warning: Could not find diagram with identifier: {figure_identifier}")
             
-            if not question_extraction or not marks_mapping:
-                print(f"Missing required data for question combination: run_id={run_id}")
-                if not question_extraction:
-                    print("  - Question extraction data is missing")
-                if not marks_mapping:
-                    print("  - Marks mapping data is missing")
-                return False
+            # Update tables with mapping data
+            if "tables" in mapping_data:
+                for table_identifier, mapping_info in mapping_data["tables"].items():
+                    # Find table by identifier
+                    table = await pipeline_db.get_table_by_identifier(table_identifier)
+                    if table:
+                        table_id = str(table.get("_id"))
+                        await pipeline_db.update_table_mapping(
+                            table_id=table_id,
+                            question_identifier=mapping_info.get("question_identifier"),
+                            choice_location=mapping_info.get("choice_location")
+                        )
+                        print(f"Updated table {table_id} ({table_identifier}) with question_identifier: {mapping_info.get('question_identifier')}, choice_location: {mapping_info.get('choice_location')}")
+                    else:
+                        print(f"Warning: Could not find table with identifier: {table_identifier}")
             
-            # Create assignment first
-            assignment_id = await self.create_assignment(run_id, assignment_title, assignment_marks)
-            if not assignment_id:
-                print(f"Failed to create assignment for run_id: {run_id}")
-                return False
-            
-            print(f"Created assignment with ID: {assignment_id}")
-            
-            # Parse questions from markdown
-            questions = self._parse_questions_from_markdown(question_extraction["questions_markdown"])
-            
-            # Combine and save each question with assignment
-            saved_count = 0
-            question_ids = []
-            combined_questions = []
-            
-            for question_data in questions:
-                combined_question = self._combine_question_data(
-                    question_data, marks_mapping, diagram_mapping, run_id, assignment_id
-                )
-                if combined_question:
-                    # Save question using the new method that includes assignment_id
-                    question_id = await self.save_question_with_assignment(
-                        combined_question.dict(by_alias=True), assignment_id, run_id
-                    )
-                    if question_id:
-                        saved_count += 1
-                        question_ids.append(question_id)
-                        combined_questions.append(combined_question.dict(by_alias=True))
-            
-            # Update assignment with question IDs
-            if question_ids:
-                await self.update_assignment_questions(assignment_id, question_ids)
-                print(f"Updated assignment {assignment_id} with {len(question_ids)} questions")
-            
-            # Save to logs folder using the logger
-            if combined_questions:
-                import sys
-                import os
-                # Add the project root to the path for absolute import
-                project_root = os.path.join(os.path.dirname(__file__), '..')
-                if project_root not in sys.path:
-                    sys.path.insert(0, project_root)
-                from app.logging.logger import UnifiedLogger
-                logger = UnifiedLogger()
-                logger.save_combined_questions(run_id, combined_questions)
-            
-            print(f"Successfully combined and saved {saved_count} questions for run_id={run_id}")
-            return saved_count > 0
+            return True
             
         except Exception as e:
-            print(f"Error combining questions: {e}")
+            print(f"Error updating visual content mapping: {e}")
             return False
+    
+
+    
+
+    
+    def _create_structured_questions_output(self, questions: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Create structured output for questions with internal choice detection"""
+        structured_questions = []
+        questions_with_internal_choice = 0
+        questions_without_internal_choice = 0
+        
+        for question_data in questions:
+            question_identifier = question_data["question_identifier"]
+            has_internal_choice = question_data["has_internal_choice"]
+            question_text = question_data["question_text"]
+            
+            if has_internal_choice:
+                questions_with_internal_choice += 1
+                # For internal choice, question_text is already an array
+                structured_questions.append({
+                    "question_identifier": question_identifier,
+                    "has_internal_choice": True,
+                    "question_text": question_text
+                })
+            else:
+                questions_without_internal_choice += 1
+                # For single questions, question_text is a string
+                structured_questions.append({
+                    "question_identifier": question_identifier,
+                    "has_internal_choice": False,
+                    "question_text": question_text
+                })
+        
+        return {
+            "questions": structured_questions,
+            "total_questions": len(questions),
+            "questions_with_internal_choice": questions_with_internal_choice,
+            "questions_without_internal_choice": questions_without_internal_choice
+        }
     
     async def _get_question_extraction_data(self, run_id: str) -> Optional[Dict[str, Any]]:
         """Get question extraction data from database"""
         try:
             from .schema import COLLECTION_NAMES
-            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["question_extraction"])
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["question_content"])
             if collection is None:
                 print(f"Question extraction collection not found for run_id: {run_id}")
                 return None
@@ -315,7 +406,7 @@ class PipelineDatabaseIntegration:
         """Get marks mapping data from database"""
         try:
             from .schema import COLLECTION_NAMES
-            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["marks_mapping"])
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["marks_content"])
             if collection is None:
                 print(f"Marks mapping collection not found for run_id: {run_id}")
                 return None
@@ -331,244 +422,95 @@ class PipelineDatabaseIntegration:
             print(f"Error getting marks mapping data: {e}")
             return None
     
-    async def _get_diagram_mapping_data(self, run_id: str) -> Optional[Dict[str, Any]]:
-        """Get diagram mapping data from database"""
-        try:
-            from .schema import COLLECTION_NAMES
-            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["diagram_mapping"])
-            if collection is None:
-                return None
-            
-            doc = await collection.find_one({"run_id": run_id})
-            if doc and "mapping" in doc:
-                return doc["mapping"]
-            return None
-        except Exception as e:
-            print(f"Error getting diagram mapping data: {e}")
-            return None
+
     
-    def _parse_questions_from_markdown(self, markdown_content: str) -> List[Dict[str, Any]]:
-        """Parse questions from markdown content"""
-        from app.utils.identifier_normalizer import normalize_identifier
+    def _parse_questions_from_markdown(self, markdown_content: str, marks_mapping: Dict[str, Any] = None) -> List[Dict[str, Any]]:
+        """Parse questions from markdown content using marks mapping to determine internal choice"""
+        import re
         
         questions = []
         
         # Split by [####] to get individual questions
         question_chunks = markdown_content.split("[####]")
         
-        question_number = 1  # Start from 1 for actual questions
         for chunk in question_chunks:
             chunk = chunk.strip()
             if not chunk:
                 continue
             
-            # Create identifier and normalize it (strip ANS- prefix for internal use)
-            raw_identifier = f"ANS-{question_number}"
-            question_identifier = normalize_identifier(raw_identifier)
+            # Extract question identifier from the beginning of the chunk
+            # Look for patterns like "1.", "22.", "36." etc.
+            identifier_match = re.match(r'^(\d+)\.', chunk)
+            if identifier_match:
+                question_identifier = identifier_match.group(1)
+            else:
+                # Fallback: use sequential numbering
+                question_identifier = str(len(questions) + 1)
             
-            # Check for internal choice (we'll determine case study later from marks mapping)
-            if "[%OR%]" in chunk:
-                # Internal choice: split by [%OR%]
-                parts = chunk.split("[%OR%]")
-                primary_question = parts[0].strip()
-                secondary_question = parts[1].strip() if len(parts) > 1 else None
-                
-                questions.append({
-                    "question_identifier": question_identifier,
-                    "has_internal_choice": True,
-                    "primary_question": primary_question,
-                    "secondary_question": secondary_question
-                })
+            # Check if this question has internal choice based on marks mapping
+            has_internal_choice = False
+            question_type = "Normal Subjective"  # Default question type
+            if marks_mapping:
+                question_key = f"question-{question_identifier}"
+                if question_key in marks_mapping:
+                    question_info = marks_mapping[question_key]
+                    question_type = question_info.get("question_type", "Normal Subjective")
+                    has_internal_choice = question_type == "Internal Choice Subjective"
+            
+            # Remove the question number from the beginning if present
+            cleaned_chunk = re.sub(r'^\d+\.\s*', '', chunk).strip()
+            
+            if has_internal_choice:
+                # Check for internal choice using [%OR%] only if question_type indicates internal choice
+                if "[%OR%]" in cleaned_chunk:
+                    # Internal choice: split by [%OR%]
+                    parts = cleaned_chunk.split("[%OR%]")
+                    
+                    # Clean up each part and extract question text
+                    question_texts = []
+                    for part in parts:
+                        part = part.strip()
+                        if part:
+                            question_texts.append(part)
+                    
+                    # Ensure we have at least one question text
+                    if question_texts:
+                        questions.append({
+                            "question_identifier": question_identifier,
+                            "has_internal_choice": True,
+                            "question_text": question_texts if len(question_texts) > 1 else question_texts[0],
+                            "question_type": question_type
+                        })
+                else:
+                    # Question type indicates internal choice but no [%OR%] found
+                    questions.append({
+                        "question_identifier": question_identifier,
+                        "has_internal_choice": True,
+                        "question_text": cleaned_chunk,
+                        "question_type": question_type
+                    })
             else:
                 # No internal choice
                 questions.append({
                     "question_identifier": question_identifier,
                     "has_internal_choice": False,
-                    "primary_question": chunk,
-                    "secondary_question": None
+                    "question_text": cleaned_chunk,
+                    "question_type": question_type
                 })
-            
-            question_number += 1  # Increment for next question
         
         return questions
     
 
     
-    def _combine_question_data(self, question_data: Dict[str, Any], 
-                              marks_mapping: Dict[str, Any], 
-                              diagram_mapping: Dict[str, Any],
-                              run_id: str, assignment_id: str) -> Optional[Question]:
-        """Combine question data with marks and diagram mapping"""
-        from app.utils.identifier_normalizer import normalize_identifier
-        
-        try:
-            # Normalize the question identifier
-            question_identifier = normalize_identifier(question_data["question_identifier"])
-            question_key = f"question-{question_identifier}"
-            
-            # Get marks data
-            marks_data = marks_mapping.get(question_key, {})
-            question_type = marks_data.get("question_type", "Unknown")
-            marks = marks_data.get("marks", "")
-            
-            # Determine if it's actually a case study (override the text-based detection)
-            is_case_study = question_type.lower() == "case study"
-            
-            # Adjust has_internal_choice based on question type
-            has_internal_choice = question_data["has_internal_choice"]
-            if is_case_study:
-                has_internal_choice = False
-                # For case study, reconstruct the full question text including [%OR%]
-                if question_data["secondary_question"]:
-                    primary_question = f"{question_data['primary_question']}\n[%OR%]\n{question_data['secondary_question']}"
-                else:
-                    primary_question = question_data["primary_question"]
-            else:
-                primary_question = question_data["primary_question"]
-            
-            # Process marks
-            primary_marks, secondary_marks = self._process_marks(marks, has_internal_choice)
-            
-            # Process diagrams
-            primary_diagram_url, secondary_diagram_url = self._process_diagrams(
-                question_identifier, diagram_mapping, has_internal_choice
-            )
-            
-            # Create Question object
-            question = Question(
-                assignment_id=assignment_id,
-                run_id=run_id,
-                question_identifier=question_identifier,
-                has_internal_choice=has_internal_choice,
-                primary_question=primary_question,
-                secondary_question=None if is_case_study else question_data["secondary_question"],
-                primary_diagram_url=primary_diagram_url,
-                secondary_diagram_url=secondary_diagram_url,
-                table_url=None,  # Currently null as mentioned
-                primary_marks=primary_marks,
-                secondary_marks=secondary_marks,
-                question_type=question_type,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
-            )
-            
-            return question
-            
-        except Exception as e:
-            print(f"Error combining question data: {e}")
-            return None
-    
-    def _process_marks(self, marks: List[str], has_internal_choice: bool) -> Tuple[str, Optional[str]]:
-        """Process marks list into primary and secondary marks"""
-        if not has_internal_choice:
-            # For non-internal choice, return the first mark as primary
-            return marks[0] if marks else "", None
-        
-        # For internal choice, return first and second marks
-        if len(marks) >= 2:
-            return marks[0], marks[1]
-        elif len(marks) == 1:
-            # Only one mark available, use as primary
-            return marks[0], None
-        else:
-            # No marks available
-            return "", None
-    
-    def _process_diagrams(self, question_identifier: str, diagram_mapping: Dict[str, Any], 
-                         has_internal_choice: bool) -> Tuple[Optional[str], Optional[str]]:
-        """Process diagram mapping for a question"""
-        from app.utils.identifier_normalizer import normalize_identifier
-        
-        primary_diagram_url = None
-        secondary_diagram_url = None
-        
-        # Find diagrams for this question (normalize both identifiers for comparison)
-        normalized_question_id = normalize_identifier(question_identifier)
-        for figure_key, figure_data in diagram_mapping.items():
-            figure_question_id = normalize_identifier(figure_data.get("question_identifier", ""))
-            if figure_question_id == normalized_question_id:
-                cloudinary_url = figure_data.get("cloudinary_url")
-                choice_location = figure_data.get("choice_location", "null")
-                
-                if choice_location == "null" or not has_internal_choice:
-                    # Diagram applies to entire question or no internal choice
-                    primary_diagram_url = cloudinary_url
-                elif choice_location == "first":
-                    primary_diagram_url = cloudinary_url
-                elif choice_location == "second":
-                    secondary_diagram_url = cloudinary_url
-        
-        return primary_diagram_url, secondary_diagram_url
+
     
 
     
-    async def save_final_outputs(self, final_outputs: Dict[str, Any]) -> bool:
-        """Save final pipeline outputs"""
-        if not self.current_run_id:
-            return False
-        
-        # Add to pipeline data
-        self.pipeline_data["final_outputs"] = final_outputs
-        
-        # Update in database
-        return await self._update_pipeline_data()
+
     
-    async def add_error(self, error_message: str) -> bool:
-        """Add error to pipeline"""
-        if not self.current_run_id:
-            return False
-        
-        # Add to pipeline data
-        if "errors" not in self.pipeline_data:
-            self.pipeline_data["errors"] = []
-        self.pipeline_data["errors"].append(error_message)
-        
-        # Update in database
-        return await self._update_pipeline_data()
+
     
-    async def complete_pipeline(self, success: bool = True) -> bool:
-        """Mark pipeline as completed"""
-        if not self.current_run_id:
-            return False
-        
-        status = "completed" if success else "failed"
-        return await pipeline_db.update_pipeline_status(self.current_run_id, status)
-    
-    async def _update_pipeline_data(self) -> bool:
-        """Update pipeline data in database"""
-        if not self.current_run_id:
-            return False
-        
-        try:
-            # Update the pipeline document with new data
-            collection = pipeline_db.db_manager.get_collection("pipeline_results")
-            if collection is None:
-                return False
-            
-            # Update only the fields that have changed
-            update_data = {
-                "updated_at": datetime.utcnow()
-            }
-            
-            if "steps" in self.pipeline_data:
-                update_data["steps"] = self.pipeline_data["steps"]
-            if "step_results" in self.pipeline_data:
-                update_data["step_results"] = self.pipeline_data["step_results"]
-            if "final_outputs" in self.pipeline_data:
-                update_data["final_outputs"] = self.pipeline_data["final_outputs"]
-            if "errors" in self.pipeline_data:
-                update_data["errors"] = self.pipeline_data["errors"]
-            
-            result = await collection.update_one(
-                {"run_id": self.current_run_id},
-                {"$set": update_data}
-            )
-            
-            return result.modified_count > 0
-            
-        except Exception as e:
-            print(f"Failed to update pipeline data: {e}")
-            return False
+
     
     # =============================================================================
     # CORE BUSINESS LOGIC METHODS
@@ -653,18 +595,11 @@ class PipelineDatabaseIntegration:
         
         try:
             question = Question(
-                assignment_id=assignment_id,
-                run_id=run_id,
-                question_identifier=question_data["question_identifier"],
-                has_internal_choice=question_data["has_internal_choice"],
-                primary_question=question_data["primary_question"],
-                secondary_question=question_data.get("secondary_question"),
-                primary_diagram_url=question_data.get("primary_diagram_url"),
-                secondary_diagram_url=question_data.get("secondary_diagram_url"),
-                table_url=question_data.get("table_url"),
-                primary_marks=question_data["primary_marks"],
-                secondary_marks=question_data.get("secondary_marks"),
+                question_text=question_data["question_text"],
+                question_marks=question_data["question_marks"],
                 question_type=question_data["question_type"],
+                diagram_url=question_data.get("diagram_url"),
+                table_url=question_data.get("table_url"),
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
             )
@@ -687,6 +622,45 @@ class PipelineDatabaseIntegration:
             
         except Exception as e:
             print(f"Error updating assignment questions: {e}")
+            return False
+    
+    async def update_assignment_visual_content(self, assignment_id: str, visual_content_id: str) -> bool:
+        """Update assignment with visual content ID"""
+        if not await self.initialize():
+            return False
+        
+        try:
+            success = await pipeline_db.update_assignment_visual_content(assignment_id, visual_content_id)
+            return success
+            
+        except Exception as e:
+            print(f"Error updating assignment visual content: {e}")
+            return False
+    
+    async def update_assignment_question_content(self, assignment_id: str, question_content_id: str) -> bool:
+        """Update assignment with question content ID"""
+        if not await self.initialize():
+            return False
+        
+        try:
+            success = await pipeline_db.update_assignment_question_content(assignment_id, question_content_id)
+            return success
+            
+        except Exception as e:
+            print(f"Error updating assignment question content: {e}")
+            return False
+    
+    async def update_assignment_marks_content(self, assignment_id: str, marks_content_id: str) -> bool:
+        """Update assignment with marks content ID"""
+        if not await self.initialize():
+            return False
+        
+        try:
+            success = await pipeline_db.update_assignment_marks_content(assignment_id, marks_content_id)
+            return success
+            
+        except Exception as e:
+            print(f"Error updating assignment marks content: {e}")
             return False
     
     async def save_student_assignment_response(self, student_id: str, assignment_id: str, 
@@ -725,16 +699,12 @@ class PipelineDatabaseIntegration:
                 student_id=student_id,
                 assignment_id=assignment_id,
                 run_id=run_id,
-                question_identifier=question_data["question_identifier"],
-                has_internal_choice=question_data["has_internal_choice"],
-                primary_question=question_data["primary_question"],
-                secondary_question=question_data.get("secondary_question"),
-                primary_diagram_url=question_data.get("primary_diagram_url"),
-                secondary_diagram_url=question_data.get("secondary_diagram_url"),
-                table_url=question_data.get("table_url"),
-                primary_marks=question_data["primary_marks"],
-                secondary_marks=question_data.get("secondary_marks"),
+                question_text=question_data["question_text"],
+                question_marks=question_data["question_marks"],
+                question_marks_analysis=question_data["question_marks_analysis"],
                 question_type=question_data["question_type"],
+                diagram_url=question_data.get("diagram_url"),
+                table_url=question_data.get("table_url"),
                 response_cloudinary_url=response_url,
                 created_at=datetime.utcnow(),
                 updated_at=datetime.utcnow()
@@ -747,79 +717,377 @@ class PipelineDatabaseIntegration:
         except Exception as e:
             print(f"Error creating question response mapping: {e}")
             return None
+    
+    async def question_parsing_consolidation(self, run_id: str, assignment_id: str) -> bool:
+        """
+        Final step: Process question content and create individual question documents
+        with proper diagram/table mapping and update assignment with questions array
+        """
+        if not await self.initialize():
+            return False
+        
+        try:
+            print(f"Starting question parsing consolidation for run_id: {run_id}")
+            
+            # Step 1: Get question content from database
+            question_content = await self._get_question_content_by_run_id(run_id)
+            if not question_content or not question_content.get("questions"):
+                print(f"No question content found for run_id: {run_id}")
+                return False
+            
+            # Step 2: Get marks mapping for internal choice detection
+            marks_mapping = await self._get_marks_mapping_data(run_id)
+            if not marks_mapping:
+                print(f"No marks mapping found for run_id: {run_id}")
+                return False
+            
+            # Step 3: Get visual content for diagram/table URLs
+            visual_content = await self._get_visual_content_by_run_id(run_id)
+            
+            # Step 4: Get tables and diagrams collections for mapping
+            tables = await self._get_tables_by_run_id(run_id)
+            diagrams = await self._get_diagrams_by_run_id(run_id)
+            
+            # Step 4: Process each question and create question documents
+            assignment_questions = []
+            
+            for question_data in question_content["questions"]:
+                question_identifier = question_data["question_identifier"]
+                question_text = question_data["question_text"]
+                
+                # Determine internal choice based on marks mapping
+                has_internal_choice = False
+                question_key = f"question-{question_identifier}"
+                if question_key in marks_mapping:
+                    question_info = marks_mapping[question_key]
+                    question_type = question_info.get("question_type", "")
+                    has_internal_choice = question_type == "Internal Choice Subjective"
+                
+                print(f"Processing question {question_identifier} (internal choice: {has_internal_choice})")
+                
+                if has_internal_choice:
+                    # Handle internal choice questions
+                    if isinstance(question_text, list):
+                        # question_text is already a list of sub-questions
+                        sub_questions = question_text
+                    else:
+                        # Split question by [%OR%] to get two sub-questions
+                        sub_questions = question_text.split("[%OR%]")
+                    
+                    if len(sub_questions) != 2:
+                        print(f"Warning: Question {question_identifier} has internal choice but doesn't split into 2 parts")
+                        continue
+                    
+                    # Get marks for internal choice questions (should be an array in marks_analysis)
+                    marks_analysis_array = question_info.get("marks_analysis", [])
+                    question_marks = question_info.get("marks", 1)  # Numerical value
+                    
+                    if not isinstance(marks_analysis_array, list) or len(marks_analysis_array) != 2:
+                        print(f"Warning: Question {question_identifier} has invalid marks_analysis array: {marks_analysis_array}")
+                        continue
+                    
+                    question_ids = []
+                    for i, sub_question in enumerate(sub_questions):
+                        choice_location = "first" if i == 0 else "second"
+                        
+                        # Get diagram/table URLs for this choice
+                        diagram_url = await self._get_diagram_url_for_question(
+                            question_identifier, choice_location, diagrams
+                        )
+                        table_url = await self._get_table_url_for_question(
+                            question_identifier, choice_location, tables
+                        )
+                        
+                        # Use the corresponding mark analysis from the array (top to bottom order)
+                        question_marks_analysis = marks_analysis_array[i] if i < len(marks_analysis_array) else "1 mark"
+                        
+                        # Create question document
+                        question_id = await self._create_question_document(
+                            question_text=sub_question.strip() if isinstance(sub_question, str) else sub_question,
+                            question_marks=question_marks,  # Use numerical marks from marks mapping
+                            question_marks_analysis=question_marks_analysis,  # Use marks_analysis from marks mapping
+                            question_type=question_type,  # Use the question_type from marks mapping
+                            diagram_url=diagram_url,
+                            table_url=table_url
+                        )
+                        
+                        if question_id:
+                            question_ids.append(question_id)
+                            print(f"  - Created question {question_identifier}{'a' if i == 0 else 'b'}: {question_id}")
+                        else:
+                            print(f"  - Failed to create question {question_identifier}{'a' if i == 0 else 'b'}")
+                    
+                    # Add to assignment with array of question IDs
+                    if len(question_ids) == 2:
+                        assignment_questions.append({
+                            "question_identifier": question_identifier,
+                            "question_id": question_ids
+                        })
+                        print(f"  - Added internal choice question {question_identifier} with {len(question_ids)} sub-questions")
+                    else:
+                        print(f"  - Warning: Question {question_identifier} didn't create both sub-questions")
+                
+                else:
+                    # Single question - get diagram/table URLs
+                    diagram_url = await self._get_diagram_url_for_question(
+                        question_identifier, None, diagrams
+                    )
+                    table_url = await self._get_table_url_for_question(
+                        question_identifier, None, tables
+                    )
+                    
+                    # Get marks for single questions
+                    question_marks = question_info.get("marks", 1) if question_info else 1  # Numerical value
+                    question_marks_analysis = question_info.get("marks_analysis", "1 mark") if question_info else "1 mark"
+                    
+                    # Create question document
+                    question_id = await self._create_question_document(
+                        question_text=question_text,
+                        question_marks=question_marks,  # Use numerical marks from marks mapping
+                        question_marks_analysis=question_marks_analysis,  # Use marks_analysis from marks mapping
+                        question_type=question_type,  # Use the question_type from marks mapping
+                        diagram_url=diagram_url,
+                        table_url=table_url
+                    )
+                    
+                    if question_id:
+                        assignment_questions.append({
+                            "question_identifier": question_identifier,
+                            "question_id": question_id
+                        })
+                        print(f"  - Created single question {question_identifier}: {question_id}")
+                    else:
+                        print(f"  - Failed to create question {question_identifier}")
+            
+            # Step 5: Update assignment with questions array
+            if assignment_questions:
+                success = await self._update_assignment_questions_array(assignment_id, assignment_questions)
+                if success:
+                    print(f"✅ Successfully updated assignment with {len(assignment_questions)} questions")
+                    return True
+                else:
+                    print(f"❌ Failed to update assignment with questions array")
+                    return False
+            else:
+                print(f"❌ No questions were created for assignment")
+                return False
+                
+        except Exception as e:
+            print(f"Error in question parsing consolidation: {e}")
+            return False
+    
+    async def _get_question_content_by_run_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get question content by run_id"""
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["question_content"])
+            if collection is None:
+                return None
+            
+            doc = await collection.find_one({"run_id": run_id})
+            return doc
+        except Exception as e:
+            print(f"Error getting question content: {e}")
+            return None
+    
+    async def _get_visual_content_by_run_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """Get visual content by run_id by first getting the assignment"""
+        try:
+            # First get the assignment to get the visual_content_id
+            from .schema import COLLECTION_NAMES
+            assignments_collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["assignments"])
+            if assignments_collection is None:
+                return None
+            
+            assignment = await assignments_collection.find_one({"run_id": run_id})
+            if not assignment or not assignment.get("visual_content_id"):
+                print(f"No assignment or visual_content_id found for run_id: {run_id}")
+                return None
+            
+            # Now get the visual content using the visual_content_id
+            visual_content_collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["visual_content"])
+            if visual_content_collection is None:
+                return None
+            
+            try:
+                from bson import ObjectId
+                visual_content = await visual_content_collection.find_one({"_id": ObjectId(assignment["visual_content_id"])})
+                return visual_content
+            except Exception as e:
+                print(f"Error getting visual content by ID: {e}")
+                return None
+                
+        except Exception as e:
+            print(f"Error getting visual content: {e}")
+            return None
+    
+    async def _get_tables_by_run_id(self, run_id: str) -> List[Dict[str, Any]]:
+        """Get all tables for a run_id by getting visual content first"""
+        try:
+            # First get the visual content document to get table object IDs
+            visual_content = await self._get_visual_content_by_run_id(run_id)
+            if not visual_content or not visual_content.get("tables"):
+                return []
+            
+            # Get the actual table documents using the object IDs
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["tables"])
+            if collection is None:
+                return []
+            
+            tables = []
+            for table_id in visual_content["tables"]:
+                try:
+                    from bson import ObjectId
+                    table = await collection.find_one({"_id": ObjectId(table_id)})
+                    if table:
+                        tables.append(table)
+                except Exception as e:
+                    print(f"Error getting table {table_id}: {e}")
+            
+            return tables
+        except Exception as e:
+            print(f"Error getting tables: {e}")
+            return []
+    
+    async def _get_diagrams_by_run_id(self, run_id: str) -> List[Dict[str, Any]]:
+        """Get all diagrams for a run_id by getting visual content first"""
+        try:
+            # First get the visual content document to get diagram object IDs
+            visual_content = await self._get_visual_content_by_run_id(run_id)
+            if not visual_content or not visual_content.get("diagrams"):
+                return []
+            
+            # Get the actual diagram documents using the object IDs
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["diagrams"])
+            if collection is None:
+                return []
+            
+            diagrams = []
+            for diagram_id in visual_content["diagrams"]:
+                try:
+                    from bson import ObjectId
+                    diagram = await collection.find_one({"_id": ObjectId(diagram_id)})
+                    if diagram:
+                        diagrams.append(diagram)
+                except Exception as e:
+                    print(f"Error getting diagram {diagram_id}: {e}")
+            
+            return diagrams
+        except Exception as e:
+            print(f"Error getting diagrams: {e}")
+            return []
+    
+    async def _get_diagram_url_for_question(self, question_identifier: str, choice_location: str, 
+                                          diagrams: List[Dict[str, Any]]) -> Optional[str]:
+        """Get diagram URL for a specific question and choice location"""
+        try:
+            # Normalize choice_location for comparison
+            # Database stores 'null' as string, but we pass None for single questions
+            normalized_choice_location = choice_location if choice_location is not None else 'null'
+            
+            for diagram in diagrams:
+                if (diagram.get("question_identifier") == question_identifier and 
+                    diagram.get("choice_location") == normalized_choice_location):
+                    return diagram.get("diagram_url")
+            return None
+        except Exception as e:
+            print(f"Error getting diagram URL: {e}")
+            return None
+    
+    async def _get_table_url_for_question(self, question_identifier: str, choice_location: str, 
+                                        tables: List[Dict[str, Any]]) -> Optional[str]:
+        """Get table URL for a specific question and choice location"""
+        try:
+            # Normalize choice_location for comparison
+            # Database stores 'null' as string, but we pass None for single questions
+            normalized_choice_location = choice_location if choice_location is not None else 'null'
+            
+            for table in tables:
+                if (table.get("question_identifier") == question_identifier and 
+                    table.get("choice_location") == normalized_choice_location):
+                    return table.get("table_url")
+            return None
+        except Exception as e:
+            print(f"Error getting table URL: {e}")
+            return None
+    
+    async def _create_question_document(self, question_text: str, question_marks: Union[int, float], question_marks_analysis: str, question_type: str,
+                                       diagram_url: str = None, table_url: str = None) -> Optional[str]:
+        """Create a question document in the questions collection using simplified Question schema"""
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["questions"])
+            if collection is None:
+                return None
+            
+            question_doc = {
+                "question_text": question_text,
+                "question_marks": question_marks,
+                "question_marks_analysis": question_marks_analysis,
+                "question_type": question_type,
+                "diagram_url": diagram_url,
+                "table_url": table_url,
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow()
+            }
+            
+            result = await collection.insert_one(question_doc)
+            return str(result.inserted_id)
+            
+        except Exception as e:
+            print(f"Error creating question document: {e}")
+            return None
+    
+    async def _update_assignment_questions_array(self, assignment_id: str, 
+                                               questions_array: List[Dict[str, Any]]) -> bool:
+        """Update assignment with questions array"""
+        try:
+            from .schema import COLLECTION_NAMES
+            collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["assignments"])
+            if collection is None:
+                return False
+            
+            # Try with string ID first
+            result = await collection.update_one(
+                {"_id": assignment_id},
+                {
+                    "$set": {
+                        "questions": questions_array,
+                        "updated_at": datetime.utcnow()
+                    }
+                }
+            )
+            
+            if result.modified_count > 0:
+                return True
+            else:
+                # Try with ObjectId as fallback
+                try:
+                    from bson import ObjectId
+                    result = await collection.update_one(
+                        {"_id": ObjectId(assignment_id)},
+                        {
+                            "$set": {
+                                "questions": questions_array,
+                                "updated_at": datetime.utcnow()
+                            }
+                        }
+                    )
+                    return result.modified_count > 0
+                except Exception:
+                    return False
+                    
+        except Exception as e:
+            print(f"Error updating assignment questions array: {e}")
+            return False
 
 
 # Global integration instance
-db_integration = PipelineDatabaseIntegration()
+db_integration = DatabaseIntegration()
 
 
-def get_db_integration() -> PipelineDatabaseIntegration:
+def get_db_integration() -> DatabaseIntegration:
     """Get the global database integration instance"""
-    return db_integration
-
-
-async def save_logs_to_database(run_id: str, logs_dir: str) -> bool:
-    """Legacy function to save existing logs to database"""
-    """This function can be used to migrate existing logs to the database"""
-    
-    if not await db_integration.initialize():
-        return False
-    
-    logs_path = Path(logs_dir)
-    metadata_file = logs_path / "metadata.json"
-    
-    if not metadata_file.exists():
-        print(f"Metadata file not found: {metadata_file}")
-        return False
-    
-    try:
-        # Read metadata
-        with open(metadata_file, 'r') as f:
-            metadata = json.load(f)
-        
-        # Start pipeline
-        success = await db_integration.start_pipeline(
-            run_id=run_id,
-            title=metadata.get("title", "Unknown Pipeline"),
-            filename=metadata.get("data", {}).get("filename", "unknown.pdf")
-        )
-        
-        if not success:
-            return False
-        
-        # Save steps
-        for step in metadata.get("steps", []):
-            await db_integration.save_step_log(
-                step_name=step.get("name", ""),
-                input_data=step.get("input", ""),
-                output_data=step.get("output", "")
-            )
-        
-        # Save step results if available
-        step2_file = logs_path / "step2_diagram_mapping" / "step2_diagram_mapping.json"
-        if step2_file.exists():
-            with open(step2_file, 'r') as f:
-                mapping_data = json.load(f)
-            await db_integration.save_diagram_mapping_result(run_id, mapping_data)
-        
-        step3_file = logs_path / "step3_question_extraction" / "step3_questions.md"
-        if step3_file.exists():
-            with open(step3_file, 'r') as f:
-                questions_markdown = f.read()
-            await db_integration.save_question_extraction_result(run_id, questions_markdown, str(step3_file))
-        
-        step4_file = logs_path / "step4_marks_mapping" / "step4_marks_mapping.json"
-        if step4_file.exists():
-            with open(step4_file, 'r') as f:
-                marks_data = json.load(f)
-            await db_integration.save_marks_mapping_result(run_id, marks_data)
-        
-        # Complete pipeline
-        await db_integration.complete_pipeline(success=True)
-        
-        print(f"Successfully migrated logs for run_id: {run_id}")
-        return True
-        
-    except Exception as e:
-        print(f"Failed to migrate logs: {e}")
-        return False 
+    return db_integration 

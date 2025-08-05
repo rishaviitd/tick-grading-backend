@@ -27,8 +27,8 @@ async def check_database():
             "teachers", "students", "assignments", "questions", 
             "student_assignment_responses", "question_response_mappings",
             "pipeline_results", "diagram_extraction_results", 
-            "diagram_mapping_results", "question_extraction_results", 
-            "marks_mapping_results"
+            "question_extraction_results", 
+        
         ]
         
         for collection_name in collections_to_check:

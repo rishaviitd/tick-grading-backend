@@ -1,0 +1,25 @@
+{
+  "ques_identifier": "19",
+  "assessment_intent": "This question assesses the student's ability to apply the Pythagorean theorem to verify a given statement about the dimensions of a right-angled triangle formed by a ladder, wall, and ground, and to understand the relationship between sides and angles in such a triangle.",
+  "bloom_taxonomy_level": "Applying",
+  "tags": {
+    "chapters": [
+      {
+        "chapter": "Triangles",
+        "concepts": [
+          {
+            "name": "Pythagorean theorem"
+          }
+        ]
+      },
+      {
+        "chapter": "Introduction to Trigonometry",
+        "concepts": [
+          {
+            "name": "Trigonometric Ratios"
+          }
+        ]
+      }
+    ]
+  }
+}

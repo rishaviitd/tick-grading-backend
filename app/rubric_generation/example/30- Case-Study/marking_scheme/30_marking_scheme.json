@@ -1,0 +1,136 @@
+{
+  "ques_identifier": "30",
+  "parts": [
+    {
+      "part_label": "a",
+      "methods": [
+        {
+          "methodName": "Direct Calculation",
+          "markingPoints": [
+            {
+              "stepId": "a_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "List the complete sample space for tossing three unbiased coins.",
+              "Pass if": "All 8 possible outcomes (HHH, HHT, HTH, THH, HTT, THT, TTH, TTT) are listed correctly.",
+              "Fail if": "Any outcome is missing or incorrect.",
+              "guidance": "Award 0.5 marks for listing all 8 possible outcomes correctly. If any outcome is incorrect or missing, no marks are awarded for this step."
+            },
+            {
+              "stepId": "a_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the favourable outcomes for 'exactly two tails' and calculate the probability.",
+              "Pass if": "Favourable outcomes (HTT, THT, TTH) are correctly identified and the probability (3/8) is calculated.",
+              "Fail if": "Favourable outcomes are incorrect, or the probability calculation is wrong.",
+              "guidance": "Award 0.5 marks for correctly identifying the 3 favourable outcomes (HTT, THT, TTH) and calculating the probability as 3/8. Marks are awarded for both correct identification of outcomes and correct probability calculation."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "b",
+      "methods": [
+        {
+          "methodName": "Direct Calculation",
+          "markingPoints": [
+            {
+              "stepId": "b_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the favourable outcomes for 'at least one head' from the sample space.",
+              "Pass if": "All outcomes containing at least one head (i.e., all except TTT) are correctly identified.",
+              "Fail if": "Any outcome is missed or incorrectly included.",
+              "guidance": "Award 0.5 marks for correctly identifying the favourable outcomes (all except TTT). This requires understanding 'at least one head'."
+            },
+            {
+              "stepId": "b_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Calculate the probability of getting at least one head.",
+              "Pass if": "The probability (7/8) is calculated correctly.",
+              "Fail if": "The calculation is incorrect.",
+              "guidance": "Award 0.5 marks for the correct probability calculation of 7/8. This mark is dependent on correctly identifying the favourable outcomes or using a correct complementary method."
+            }
+          ]
+        },
+        {
+          "methodName": "Complementary Probability",
+          "markingPoints": [
+            {
+              "stepId": "b_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the complementary event (no heads, i.e., all tails) from the sample space.",
+              "Pass if": "The outcome TTT is correctly identified as the event with no heads.",
+              "Fail if": "The incorrect outcome is identified.",
+              "guidance": "Award 0.5 marks for correctly identifying the complementary event (all tails, TTT)."
+            },
+            {
+              "stepId": "b_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Calculate the probability of the complementary event and then the probability of the required event.",
+              "Pass if": "Probability of no heads (1/8) is calculated, and probability of at least one head (1 - 1/8 = 7/8) is calculated.",
+              "Fail if": "Calculation of probability of no heads or the final probability is incorrect.",
+              "guidance": "Award 0.5 marks for the correct calculation of the complementary probability (1/8) and the final answer (7/8)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "c",
+      "methods": [
+        {
+          "methodName": "Direct Calculation",
+          "markingPoints": [
+            {
+              "stepId": "c_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the favourable outcomes for 'at most two heads' from the sample space.",
+              "Pass if": "All outcomes with zero, one, or two heads (i.e., all except HHH) are correctly identified.",
+              "Fail if": "Any outcome is missed or incorrectly included.",
+              "guidance": "Award 0.5 marks for correctly identifying the favourable outcomes (all except HHH). This requires understanding 'at most two heads'."
+            },
+            {
+              "stepId": "c_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Calculate the probability of getting at most two heads.",
+              "Pass if": "The probability (7/8) is calculated correctly.",
+              "Fail if": "The calculation is incorrect.",
+              "guidance": "Award 0.5 marks for the correct probability calculation of 7/8. This mark is dependent on correctly identifying the favourable outcomes or using a correct complementary method."
+            }
+          ]
+        },
+        {
+          "methodName": "Complementary Probability",
+          "markingPoints": [
+            {
+              "stepId": "c_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the complementary event (exactly three heads) from the sample space.",
+              "Pass if": "The outcome HHH is correctly identified as the event with exactly three heads.",
+              "Fail if": "The incorrect outcome is identified.",
+              "guidance": "Award 0.5 marks for correctly identifying the complementary event (exactly three heads, HHH)."
+            },
+            {
+              "stepId": "c_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Calculate the probability of the complementary event and then the probability of the required event.",
+              "Pass if": "Probability of exactly three heads (1/8) is calculated, and probability of at most two heads (1 - 1/8 = 7/8) is calculated.",
+              "Fail if": "Calculation of probability of exactly three heads or the final probability is incorrect.",
+              "guidance": "Award 0.5 marks for the correct calculation of the complementary probability (1/8) and the final answer (7/8)."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Question_specific_notes": "The sample space for tossing three coins is {HHH, HHT, HTH, THH, HTT, THT, TTH, TTT}. Each outcome has a probability of 1/8. For parts (b) and (c), students may use direct calculation or complementary probability methods. Ensure marks are awarded for correctly identifying favourable outcomes or complementary events, and for accurate probability calculations."
+}

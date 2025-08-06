@@ -1,0 +1,17 @@
+{
+  "ques_identifier": "23_primary",
+  "assessment_intent": "This question assesses the student's ability to find the Least Common Multiple (LCM) of two given numbers, which involves applying the concept of prime factorization or the relationship between LCM and GCD.",
+  "bloom_taxonomy_level": "Applying",
+  "tags": {
+    "chapters": [
+      {
+        "chapter": "Real Numbers",
+        "concepts": [
+          {
+            "name": "Fundamental Theorem of Arithmetic"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "ques_identifier": "30",
+  "assessment_intent": "This question assesses the student's ability to calculate probabilities of different events when tossing three unbiased coins. It requires understanding the sample space, identifying favorable outcomes for specific events (exactly two tails, at least one head, at most two heads), and applying the classical definition of probability.",
+  "bloom_taxonomy_level": "Applying",
+  "tags": {
+    "chapters": [
+      {
+        "chapter": "Probability",
+        "concepts": [
+          {
+            "name": "Classical definition of probability"
+          },
+          {
+            "name": "Simple problems on finding the probability of an event"
+          }
+        ]
+      }
+    ]
+  }
+}

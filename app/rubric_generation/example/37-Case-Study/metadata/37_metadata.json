@@ -1,0 +1,20 @@
+{
+  "ques_identifier": "37",
+  "assessment_intent": "This case study assesses the student's ability to apply trigonometric principles, specifically angles of depression and trigonometric ratios, to calculate distances in a real-world scenario involving a lighthouse and a ship. It also tests the understanding of the relationship between angles of depression and elevation, and the subsequent calculation of speed using the derived distances.",
+  "bloom_taxonomy_level": "Applying",
+  "tags": {
+    "chapters": [
+      {
+        "chapter": "Heights and Distances",
+        "concepts": [
+          {
+            "name": "Angle of Depression"
+          },
+          {
+            "name": "Simple problems on heights and distances"
+          }
+        ]
+      }
+    ]
+  }
+}

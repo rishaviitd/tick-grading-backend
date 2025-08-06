@@ -1,0 +1,9 @@
+{
+  "_id": "6884c33fb94b758f27dbc946",
+  "run_id": "ad1789f357ff",
+  "ques_identifier": "30",
+  "ques_text": "30. Three unbiased coins are tossed simultaneously. Find the probability of getting:\n(a) exactly two tails\n(b) at least one head\n(c) at most two heads",
+  "marks_analysis": "Part (a): 1 mark, Part (b): 1 mark, Part (c): 1 mark",
+  "question_type": "Case-Study",
+  "target_class": "10"
+}

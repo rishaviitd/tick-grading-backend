@@ -1,0 +1,23 @@
+{
+  "ques_identifier": "32",
+  "assessment_intent": "This question assesses the student's ability to translate a word problem involving geometric properties of an isosceles triangle into algebraic equations, solve for unknown side lengths using the given perimeter and side ratio, and then calculate the area of the triangle using appropriate geometric formulas, likely involving the Pythagorean theorem or Heron's formula.",
+  "bloom_taxonomy_level": "Applying",
+  "tags": {
+    "chapters": [
+      {
+        "chapter": "Triangles",
+        "concepts": [
+          {
+            "name": "Area of a triangle"
+          },
+          {
+            "name": "Semi-perimeter of a triangle"
+          },
+          {
+            "name": "Heron's Formula"
+          }
+        ]
+      }
+    ]
+  }
+}

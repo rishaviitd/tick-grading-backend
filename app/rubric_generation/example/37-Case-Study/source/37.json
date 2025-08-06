@@ -1,0 +1,9 @@
+{
+  "_id": "6884c33fb94b758f27dbc94d",
+  "run_id": "ad1789f357ff",
+  "ques_identifier": "37",
+  "ques_text": "37. Case Study – 2\nA lighthouse stands tall on a cliff by the sea, watching over ships that pass by. One day a ship is seen approaching the shore and from the top of the lighthouse, the angles of depression of the ship are observed to be 30° and 45° as it moves from point P to point Q. The height of the lighthouse is 50 metres.\nBased on the information given above, answer the following questions :\n(i) Find the distance of the ship from the base of the lighthouse when it is at point Q, where the angle of depression is 45°.\n(ii) Find the measures of ∠ PBA and ∠ QBA.\n(iii) (a) Find the distance travelled by the ship between points P and Q.\n[%OR%]\n(b) If the ship continues moving towards the shore and takes 10 minutes to travel from Q to A, calculate the speed of the ship in km/h, from Q to A.",
+  "marks_analysis": "Part (i): 1 mark, Part (ii): 1 mark, Part (iii) (a): 2 marks, Part (iii) (b) OR: 2 marks",
+  "question_type": "Case-Study",
+  "target_class": "10"
+}

@@ -1,0 +1,117 @@
+[
+  {
+    "chapter": "Real Numbers",
+    "concepts": [
+      "Fundamental Theorem of Arithmetic",
+      "Proofs of Irrationality"
+    ]
+  },
+  {
+    "chapter": "Polynomials",
+    "concepts": [
+      "Zeros of a polynomial",
+      "Relationship between Zeros and Coefficients"
+    ]
+  },
+  {
+    "chapter": "Pair of Linear Equations in Two Variables",
+    "concepts": [
+      "Graphical Method of Solution",
+      "Algebraic Method of Solution",
+      "Algebraic conditions for number of solutions"
+    ]
+  },
+  {
+    "chapter": "Quadratic Equations",
+    "concepts": [
+      "Standard form of a quadratic equation (ax² + bx + c = 0)",
+      "Solution of Quadratic Equations",
+      "Nature of Roots",
+      "Situational problems"
+    ]
+  },
+  {
+    "chapter": "Arithmetic Progressions",
+    "concepts": [
+      "Introduction to Arithmetic Progression",
+      "nth Term of an AP",
+      "Sum of first n Terms of an AP"
+    ]
+  },
+  {
+    "chapter": "Coordinate Geometry",
+    "concepts": [
+      "Distance Formula",
+      "Section Formula"
+    ]
+  },
+  {
+    "chapter": "Triangles",
+    "concepts": [
+      "Basic Proportionality Theorem (Thales Theorem)",
+      "Converse of Basic Proportionality Theorem",
+      "Similarity Criteria for Triangles",
+      "Heron's Formula",
+      "Semi-perimeter of a triangle",
+      "Properties of equilateral triangles",
+      "Area of a triangle"
+    ]
+  },
+  {
+    "chapter": "Circles",
+    "concepts": [
+      "Tangent is perpendicular to the radius at the point of contact",
+      "Lengths of tangents from an external point are equal"
+    ]
+  },
+  {
+    "chapter": "Introduction to Trigonometry",
+    "concepts": [
+      "Trigonometric Ratios",
+      "Relationships between the ratios"
+    ]
+  },
+  {
+    "chapter": "Trigonometric Identities",
+    "concepts": [
+      "Proof and application of sin²A + cos²A = 1"
+    ]
+  },
+  {
+    "chapter": "Heights and Distances",
+    "concepts": [
+      "Angle of Elevation",
+      "Angle of Depression",
+      "Simple problems on heights and distances"
+    ]
+  },
+  {
+    "chapter": "Areas Related to Circles",
+    "concepts": [
+      "Area of Sectors and Segments",
+      "Areas of combinations of plane figures"
+    ]
+  },
+  {
+    "chapter": "Surface Areas and Volumes",
+    "concepts": [
+      "Surface area of combination of solids",
+      "Volume of combination of solids"
+    ]
+  },
+  {
+    "chapter": "Statistics",
+    "concepts": [
+      "Mean of Grouped Data",
+      "Mode of Grouped Data",
+      "Median of Grouped Data"
+    ]
+  },
+  {
+    "chapter": "Probability",
+    "concepts": [
+      "Classical definition of probability",
+      "Simple problems on finding the probability of an event"
+    ]
+  }
+]

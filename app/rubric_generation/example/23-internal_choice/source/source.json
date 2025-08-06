@@ -1,0 +1,16 @@
+{
+  "_id": "6884c33fb94b758f27dbc93f",
+  "run_id": "ad1789f357ff",
+  "question_identifier": "23",
+  "has_internal_choice": true,
+  "primary_question": "23. (a) Find the smallest number which is divisible by both 644 and 462.",
+  "secondary_question": "(b) Two numbers are in the ratio 4:5 and their HCF is 11. Find the LCM of these numbers.",
+  "primary_diagram_url": null,
+  "secondary_diagram_url": null,
+  "table_url": null,
+  "primary_marks": "This question has [2] marks",
+  "secondary_marks": "This question has [2] marks",
+  "question_type": "Internal Choice Subjective",
+  "created_at": "2025-07-26 11:59:59.619917",
+  "updated_at": "2025-07-26 11:59:59.619918"
+}

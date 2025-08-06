@@ -1,0 +1,16 @@
+{
+  "_id": "6884c33fb94b758f27dbc930",
+  "run_id": "ad1789f357ff",
+  "question_identifier": "8",
+  "has_internal_choice": false,
+  "primary_question": "8. If tangents PA and PB drawn from an external point P to the circle with centre O are inclined to each other at an angle of 80\u00b0 as shown in the given figure, then the measure of \u2220 POA is :\n(A) 40\u00b0\n(B) 50\u00b0\n(C) 60\u00b0\n(D) 80\u00b0",
+  "secondary_question": null,
+  "primary_diagram_url": "https://res.cloudinary.com/de19ckse5/image/upload/v1753531176/diagram_mapping/ad1789f357ff/figure-1.png",
+  "secondary_diagram_url": null,
+  "table_url": null,
+  "primary_marks": "[1] mark",
+  "secondary_marks": null,
+  "question_type": "MCQ",
+  "created_at": "2025-07-26 11:59:59.611545",
+  "updated_at": "2025-07-26 11:59:59.611545"
+}

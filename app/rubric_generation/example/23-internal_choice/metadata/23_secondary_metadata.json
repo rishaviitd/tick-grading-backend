@@ -1,0 +1,17 @@
+{
+  "ques_identifier": "23_secondary",
+  "assessment_intent": "This question assesses the student's ability to apply the relationship between the Highest Common Factor (HCF), Least Common Multiple (LCM), and the product of two numbers. It requires students to use the given ratio to represent the numbers and then calculate their LCM using the HCF.",
+  "bloom_taxonomy_level": "Applying",
+  "tags": {
+    "chapters": [
+      {
+        "chapter": "Real Numbers",
+        "concepts": [
+          {
+            "name": "Fundamental Theorem of Arithmetic"
+          }
+        ]
+      }
+    ]
+  }
+}

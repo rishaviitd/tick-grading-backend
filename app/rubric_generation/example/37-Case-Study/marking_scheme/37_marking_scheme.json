@@ -1,0 +1,145 @@
+{
+  "ques_identifier": "37",
+  "parts": [
+    {
+      "part_label": "i",
+      "methods": [
+        {
+          "methodName": "Using Trigonometric Ratios",
+          "markingPoints": [
+            {
+              "stepId": "i_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the right-angled triangle ABQ, where AB is the height of the lighthouse (50m) and AQ is the distance of the ship from the base. Recognize that the angle of elevation from Q to B (∠BQA) is equal to the angle of depression from B to Q (45°) as alternate interior angles.",
+              "Pass if": "The correct triangle and the angle of elevation (45°) are identified, with justification (alternate interior angles).",
+              "Fail if": "Incorrect triangle or angle is identified, or justification is missing/incorrect.",
+              "guidance": "Award mark for identification of triangle ABQ and angle BQA = 45° with correct reasoning (alternate interior angles)."
+            },
+            {
+              "stepId": "i_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Apply the tangent trigonometric ratio in ΔABQ: tan(45°) = AB/AQ. Substitute the given height AB = 50m and solve for AQ.",
+              "Pass if": "The correct trigonometric ratio is applied and the calculation for AQ is performed accurately.",
+              "Fail if": "An incorrect ratio is used, or the substitution or calculation is incorrect.",
+              "guidance": "Award mark for correct application of tan(45°) = 50/AQ and correct calculation of AQ = 50m."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "ii",
+      "methods": [
+        {
+          "methodName": "Identifying Alternate Interior Angles",
+          "markingPoints": [
+            {
+              "stepId": "ii_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "State that ∠PBA is equal to the angle of depression from B to P (30°) because they are alternate interior angles formed by the horizontal line from B and the line of sight to P, with the sea level line PA as the transversal.",
+              "Pass if": "The equality ∠PBA = 30° is stated with correct reasoning (alternate interior angles).",
+              "Fail if": "The equality is stated incorrectly or the reasoning is missing/incorrect.",
+              "guidance": "Award mark for stating ∠PBA = 30° with correct justification (alternate interior angles)."
+            },
+            {
+              "stepId": "ii_2",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "State that ∠QBA is equal to the angle of depression from B to Q (45°) because they are alternate interior angles formed by the horizontal line from B and the line of sight to Q, with the sea level line QA as the transversal.",
+              "Pass if": "The equality ∠QBA = 45° is stated with correct reasoning (alternate interior angles).",
+              "Fail if": "The equality is stated incorrectly or the reasoning is missing/incorrect.",
+              "guidance": "Award mark for stating ∠QBA = 45° with correct justification (alternate interior angles)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "iii_a",
+      "methods": [
+        {
+          "methodName": "Calculating Distance PQ using Trigonometry",
+          "markingPoints": [
+            {
+              "stepId": "iii-a_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Identify the right-angled triangle ABP, where AB is the height of the lighthouse (50m) and AP is the distance of the ship from the base when at point P. Recognize that the angle of elevation from P to B (∠BPA) is equal to the angle of depression from B to P (30°) as alternate interior angles.",
+              "Pass if": "The correct triangle and the angle of elevation (30°) are identified, with justification (alternate interior angles).",
+              "Fail if": "Incorrect triangle or angle is identified, or justification is missing/incorrect.",
+              "guidance": "Award mark for identification of triangle ABP and angle BPA = 30° with correct reasoning (alternate interior angles)."
+            },
+            {
+              "stepId": "iii-a_2",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Apply the tangent trigonometric ratio in ΔABP: tan(30°) = AB/AP. Substitute the given height AB = 50m and solve for AP.",
+              "Pass if": "The correct trigonometric ratio is applied and the calculation for AP is performed accurately.",
+              "Fail if": "An incorrect ratio is used, or the substitution or calculation is incorrect.",
+              "guidance": "Award mark for correct application of tan(30°) = 50/AP and correct calculation of AP = 50√3 m (or approx. 86.6m)."
+            },
+            {
+              "stepId": "iii-a_3",
+              "MarkType": "A",
+              "marks": "1",
+              "Teacher Expectation": "Calculate the distance travelled by the ship (PQ) by subtracting the distance AQ (found in Part (i)) from the distance AP.",
+              "Pass if": "The calculation PQ = AP - AQ is performed correctly using the derived values.",
+              "Fail if": "The subtraction is incorrect or uses incorrect prior values.",
+              "guidance": "Award mark for correct subtraction: PQ = AP - AQ = 50√3 - 50 (or 86.6 - 50). Award final mark for the correct distance PQ = 50(√3 - 1) m (or approx. 36.6m)."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "iii_b",
+      "methods": [
+        {
+          "methodName": "Calculating Speed of Ship",
+          "markingPoints": [
+            {
+              "stepId": "iii-b_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "State the distance AQ from Part (i) as the distance the ship travels from Q to A.",
+              "Pass if": "The distance AQ (50m) is correctly recalled from Part (i).",
+              "Fail if": "An incorrect distance is stated.",
+              "guidance": "Award mark for recalling the distance AQ = 50m from Part (i)."
+            },
+            {
+              "stepId": "iii-b_2",
+              "MarkType": "M",
+              "marks": "0.5",
+              "Teacher Expectation": "Convert the distance AQ from metres to kilometres.",
+              "Pass if": "The conversion 50m = 0.05 km is performed correctly.",
+              "Fail if": "The conversion is incorrect.",
+              "guidance": "Award mark for converting 50m to 0.05 km."
+            },
+            {
+              "stepId": "iii-b_3",
+              "MarkType": "M",
+              "marks": "0.5",
+              "Teacher Expectation": "Convert the given time of travel (10 minutes) into hours.",
+              "Pass if": "The conversion 10 minutes = 10/60 hours = 1/6 hours is performed correctly.",
+              "Fail if": "The conversion is incorrect.",
+              "guidance": "Award mark for converting 10 minutes to 1/6 hours."
+            },
+            {
+              "stepId": "iii-b_4",
+              "MarkType": "A",
+              "marks": "0.5",
+              "Teacher Expectation": "Calculate the speed of the ship using the formula: Speed = Distance (in km) / Time (in hours).",
+              "Pass if": "The calculation (0.05 km / (1/6 h)) is performed correctly to yield the speed in km/h.",
+              "Fail if": "The formula is applied incorrectly or the final calculation is wrong.",
+              "guidance": "Award mark for correctly calculating speed = 0.05 / (1/6) = 0.3 km/h."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Question_specific_notes": "For part (iii), students may answer either (a) or (b). Both alternatives should be marked, and the candidate should be awarded the marks for the alternative in which they have scored higher. The marks for the other alternative should be disregarded."
+}

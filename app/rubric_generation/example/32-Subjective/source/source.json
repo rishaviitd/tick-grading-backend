@@ -1,0 +1,16 @@
+{
+  "_id": "6884c33fb94b758f27dbc948",
+  "run_id": "ad1789f357ff",
+  "question_identifier": "32",
+  "has_internal_choice": false,
+  "primary_question": "32. The perimeter of an isosceles triangle is 32 cm. If each equal side is 5/6 of the base, find the area of the triangle.",
+  "secondary_question": null,
+  "primary_diagram_url": null,
+  "secondary_diagram_url": null,
+  "table_url": null,
+  "primary_marks": "[5] marks",
+  "secondary_marks": null,
+  "question_type": "Normal Subjective",
+  "created_at": "2025-07-26 11:59:59.622832",
+  "updated_at": "2025-07-26 11:59:59.622833"
+}

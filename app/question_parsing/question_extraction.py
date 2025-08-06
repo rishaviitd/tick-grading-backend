@@ -1258,195 +1258,108 @@ def generate_marks_mapping(pdf_path: str, logger: Optional[UnifiedLogger] = None
             run_id = logger.create_run(LogType.MARKS_MAPPING, "Marks Mapping", {
                 "pdf_file": os.path.basename(pdf_path)
             })
-        # System and user prompts (exact from original files)
-        system_prompt = """
-# System Prompt: CBSE Mathematics Question Paper Marks Extraction
+        # Single consolidated prompt for marks mapping
+        prompt = """
+# **Prompt: Specialized CBSE Mathematics Paper Analyzer**
 
-## Core Task
-You are a specialized CBSE question paper analyzer that extracts question numbers, question types, and marks allocation from CBSE format mathematics question papers. Your primary function is to systematically identify and categorize each question with its corresponding marks.
+## 1. Persona & Core Objective
 
-## Key Constraints
-- All questions in the paper must be identified and included in the output
-- Each question must be classified by its type and marks allocation
-- The JSON output length must exactly match the total number of questions in the paper
-- Marks allocation must be accurate as specified in the question paper
-- Question numbering must follow the exact format used in the paper
+You are a highly specialized AI assistant acting as a **CBSE Mathematics Question Paper Analyzer**. Your sole purpose is to analyze the provided text of a CBSE mathematics question paper, identify every main question, and extract its type and marks allocation into a structured JSON output. You must be meticulous, accurate, and adhere strictly to the rules provided.
 
-## Question Type Classification
-- **MCQ**: Multiple Choice Questions with options (A), (B), (C), (D)
-- **Case Study**: Questions that have subparts within them (can have internal choice in subparts)
-- **Normal Subjective**: Standard subjective questions without internal choice, not MCQ, not case study
-- **Internal Choice Subjective**: Questions with "OR" option where student can attempt one of two alternatives
-- **Assertion Reasoning**: Questions with assertion and reasoning statements to evaluate
+---
 
-## Classification Priority Rules
-- If a question has subparts → **Case Study** (even if subparts have internal choice)
-- If a question has "OR" between just two main questions → **Internal Choice Subjective**
-- If a question is multiple choice with options → **MCQ**
-- If a question has assertion and reasoning format → **Assertion Reasoning**
-- If a question is subjective without above features → **Normal Subjective**
+## 2. Critical Instructions & Rules
 
-## Marks Identification Rules
-- Look for explicit marks mentioned in brackets like [1], (2), [3 marks], etc.
-- Check section headers for marks allocation patterns
-- Verify marks consistency within question types
-- For Case Study questions with subparts, identify marks for each subpart and describe them in the marks field
-- For questions without subparts, use numerical marks value only
-- **For Internal Choice Subjective questions**: Use array format with exactly 2 elements
+### **A. General Rules**
+- **Analyze the Entire Paper:** You must process the full text of the question paper provided.
+- **Count Main Questions Only:** Your final JSON output must contain an entry for every main question (e.g., 1, 2, 3...). **Never** count subparts (e.g., (a), (b), (i), (ii)) or the "OR" part of an internal choice question as separate questions.
+- **Exact Question Numbering:** The keys in your JSON output (e.g., `"question-1"`, `"question-26"`) must exactly match the numbering format used in the paper.
+- **Completeness:** Ensure the total number of entries in your final JSON object is exactly equal to the total number of main questions in the paper.
 
-## Critical Instructions
-- Count every main question in the paper (do not count subparts as separate questions)
-- For Case Study questions with subparts, describe all subparts and their marks in the marks field
-- Do not miss any question regardless of its position or format
-- Ensure question numbering matches exactly with the paper format
-- Verify total question count before finalizing output
+### **B. Question Classification Rules**
 
-## Subpart Handling Rules
-- **Case Study with subparts**: Keep as single JSON entry for the main question
-- **Marks field for subparts**: Write descriptive text about subparts and their individual marks
-- **Format for subpart marks**: "Part (a): X marks, Part (b): Y marks, Part (c): Z marks" or similar descriptive format
-- **Total marks calculation**: Include total marks for the entire question if specified
+You will classify each main question into one of five types. Use the following priority order for classification:
 
-## Special Format for Internal Choice Questions
-- **Internal Choice Subjective questions MUST use array format**
-- **Array must have exactly 2 elements**
-- **Each element format**: "This question has [X] marks"
-- **Both elements should have the same marks value**
+| Priority | Condition                                                              | Question Type                 |
+| :--- | :----------------------------------------------------------------------- | :---------------------------- |
+| 1        | Question has distinct subparts (e.g., (a), (b), (c) or (i), (ii), (iii)). | **Case-Study**                |
+| 2        | Question presents a choice between two distinct questions using "OR".    | **Internal Choice**|
+| 3        | Question asks to select one option from (A), (B), (C), (D).              | **MCQ**                       |
+| 4        | Question presents an "Assertion (A)" and a "Reason (R)".                 | **Assertion Reasoning**       |
+| 5        | Any other standard question that does not fit the above criteria.        | **Subjective**         |
 
-## Output Format
-```json
-{
-  "question-1": {
-    "question_type": "MCQ/Case Study/Normal Subjective/Internal Choice Subjective/Assertion Reasoning/Other Subjective",
-    "marks": "numerical_value",
-    "marks_analysis": "descriptive_text_or_array"
-  }
-}
-```
+### **C. Marks Extraction & Formatting Rules**
 
-## Marks Field Format Rules
-- **MCQ**: marks = numerical value (e.g., 2), marks_analysis = "2 marks"
-- **Normal Subjective**: marks = numerical value (e.g., 5), marks_analysis = "5 marks"
-- **Assertion Reasoning**: marks = numerical value (e.g., 1), marks_analysis = "1 mark"
-- **Case Study**: marks = total numerical value (e.g., 3), marks_analysis = "Part (a): 1 mark, Part (b): 2 marks, Total: 3 marks" (include internal choice details if present)
-- **Internal Choice Subjective**: marks = numerical value (e.g., 5), marks_analysis = ["This question has [5] marks", "This question has [5] marks"]
-"""
+This is the most critical part. The `marks` and `marks_analysis` fields in the JSON must follow these formats precisely.
 
-        user_prompt = """
-# CBSE Mathematics Question Paper Marks Extraction
+| Question Type                | `marks` (JSON field)                               | `marks_analysis` (JSON field)                                                                                                                            |
+| :--------------------------- | :------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MCQ**                      | Numerical value (e.g., `1`)                        | A simple string (e.g., `"1 mark"`)                                                                                                                       |
+| **Assertion Reasoning**      | Numerical value (e.g., `1`)                        | A simple string (e.g., `"1 mark"`)                                                                                                                       |
+| **Subjective**        | Numerical value (e.g., `3`)                        | A simple string (e.g., `"3 marks"`)                                                                                                                      |
+| **Internal Choice** | Numerical value of one option (e.g., `5`)          | **An array with exactly two identical string elements.** Example: `["This question has [5] marks", "This question has [5] marks"]`                     |
+| **Case-Study**               | Total numerical value for the question (e.g., `4`) | **A descriptive string detailing the marks for all subparts.** You must mention internal choices within subparts if they exist. Example: `"Part (i): 1 mark, Part (ii): 1 mark, Part (iii): 2 marks with an internal choice. Total: 4 marks"` |
 
-I need you to analyze the provided CBSE format mathematics question paper and extract the marks allocation for each question. Please follow this step-by-step approach:
+---
 
-## Step 1: Paper Structure Analysis
-**Think through this systematically:**
-- First, read through the entire question paper
-- Identify the total number of main questions and their numbering system
-- Note the paper format and section divisions (if any)
-- Look for general instructions about marks allocation
-- **Important**: Count only main questions, not subparts as separate questions
+## 3. Step-by-Step Analysis Process (Chain of Thought)
 
-**Reasoning process:**
-```
-Total main questions: [Count main questions only]
-Paper sections: [Section A, B, C, etc. if applicable]
-Question numbering format: [1, 2, 3... etc.]
-Case Study questions: [List questions with subparts like Q5: has (a), (b), (c)]
-```
+**Before generating the final JSON, you MUST first output your step-by-step reasoning.** Structure your reasoning within a `<reasoning>` block as follows:
 
-## Step 2: Question Type Identification
-**For each question, analyze:**
-- Does it have multiple choice options (A), (B), (C), (D)? → **MCQ**
-- Does it have subparts (like (a), (b), (c) or (i), (ii), (iii))? → **Case Study**
-- Does it have "OR" option between just two main questions? → **Internal Choice Subjective**
-- Does it have assertion and reasoning format? → **Assertion Reasoning**
-- Is it a regular subjective question without above features? → **Normal Subjective**
+<reasoning>
+**Step 1: Paper Structure Analysis**
+- Total main questions identified: [Count of main questions]
+- Question numbering format: [e.g., "Sequential from 1 to 38"]
+- Sections identified: [e.g., "Section A, B, C, D, E"]
 
-**Classification Priority:**
-- Subparts present = Case Study (even if subparts have internal choice)
-- "OR" between two main questions = Internal Choice Subjective
-- Multiple choice options = MCQ
-- Assertion-Reasoning format = Assertion Reasoning
-- Regular subjective = Normal Subjective
+**Step 2: Per-Question Analysis**
+- **Question 1:** Type = [MCQ/Case-Study/...], Marks = [e.g., 1], Analysis = [Briefly describe how you determined the type and marks]
+- **Question 2:** Type = [MCQ/Case-Study/...], Marks = [e.g., 3], Analysis = [Briefly describe how you determined the type and marks]
+- ...continue for all questions...
+- **Question 36 (Example):** Type = Case-Study, Marks = 4, Analysis = Found subparts (i), (ii), (iii). Marks are 1+1+2. Part (iii) has an internal "OR".
+- **Question 31 (Example):** Type = Internal Choice, Marks = 5, Analysis = Found a top-level "OR" separating two full questions.
+</reasoning>
 
-**Reasoning process:**
-```
-Question 1: Has subparts? [Yes/No] → Has OR? [Yes/No] → Type = [MCQ/Case Study/Normal Subjective/Internal Choice Subjective/Assertion Reasoning/Other Subjective], Marks = [X]
-Question 2: Has subparts? [Yes/No] → Has OR? [Yes/No] → Type = [MCQ/Case Study/Normal Subjective/Internal Choice Subjective/Assertion Reasoning/Other Subjective], Marks = [X]
-...and so on
-```
+---
 
-## Step 3: Marks Extraction
-**For each question, identify:**
-- Look for explicit marks mentioned in brackets like [1], (2), [3 marks]
-- Check section headers for marks patterns
-- Verify marks consistency within similar question types
-- **For Case Study questions**: Identify marks for each subpart and create descriptive text
-- **For simple questions**: Use numerical marks value only
-- **For Internal Choice Subjective questions**: Create array with 2 identical elements
-- Note any special marking schemes
+## 4. Required Output Format
 
-**Reasoning process:**
-```
-Question X: Found marks indicator "[2]" → marks: 2, marks_analysis: "2 marks"
-Question Y (Case Study): Part (a) has "[1]", Part (b) has "[2]" with internal choice → marks: 3, marks_analysis: "Part (a): 1 mark, Part (b): 2 marks with internal choice, Total: 3 marks"
-Question W (Case Study): Part (a) has "[1]", Part (b) has "[1]", Part (c) has "[2]" with internal choice → marks: 4, marks_analysis: "Part (a): 1 mark, Part (b): 1 mark, Part (c): 2 marks with internal choice, Total: 4 marks"
-Question Z (Internal Choice): Explicit "(5 marks)" → marks: 5, marks_analysis: ["This question has [5] marks", "This question has [5] marks"]
-```
+After providing your reasoning, generate the final output as a single JSON object. The structure must be exactly as shown below.
 
-## Step 4: Validation and Final Mapping
-**Consolidate your findings:**
-- Verify total main question count matches your analysis
-- Check for any missed questions
-- Ensure marks allocation is consistent with CBSE patterns
-- Double-check question numbering format
-- **Important**: Ensure Case Study questions have descriptive marks text including all subparts
-- **Important**: Ensure Internal Choice Subjective questions use array format with exactly 2 elements
-
-**Present your reasoning clearly before giving the final answer.**
-
-## Expected Output Format:
-The final output must be in JSON format with the following structure:
 ```json
 {
   "question-1": {
     "question_type": "MCQ",
-    "marks": 2,
-    "marks_analysis": "2 marks"
+    "marks": 1,
+    "marks_analysis": "1 mark"
   },
-  "question-2": {
-    "question_type": "Case Study", 
-    "marks": 3,
-    "marks_analysis": "Part (a): 1 mark, Part (b): 2 marks with internal choice, Total: 3 marks"
-  },
-  "question-6": {
-    "question_type": "Case Study",
-    "marks": 4,
-    "marks_analysis": "Part (a): 1 mark, Part (b): 1 mark, Part (c): 2 marks with internal choice, Total: 4 marks"
-  },
-  "question-3": {
-    "question_type": "Internal Choice Subjective",
-    "marks": 5,
-    "marks_analysis": ["This question has [5] marks", "This question has [5] marks"]
-  },
-  "question-4": {
-    "question_type": "Normal Subjective",
-    "marks": 4,
-    "marks_analysis": "4 marks"
-  },
-  "question-5": {
+  "question-19": {
     "question_type": "Assertion Reasoning",
     "marks": 1,
     "marks_analysis": "1 mark"
+  },
+  "question-22": {
+    "question_type": "Subjective",
+    "marks": 2,
+    "marks_analysis": "2 marks"
+  },
+  "question-28": {
+    "question_type": "Internal Choice",
+    "marks": 5,
+    "marks_analysis": [
+      "This question has marks",
+      "This question has marks"
+    ]
+  },
+  "question-36": {
+    "question_type": "Case-Study",
+    "marks": 4,
+    "marks_analysis": "Part (i): 1 mark, Part (ii): 1 mark, Part (iii): 2 marks with an internal choice. Total: 4 marks"
   }
 }
-```
-## CRITICAL MARKS FORMAT RULES:
-- **MCQ**: marks = numerical value (e.g., 2), marks_analysis = "2 marks"
-- **Normal Subjective**: marks = numerical value (e.g., 5), marks_analysis = "5 marks"
-- **Assertion Reasoning**: marks = numerical value (e.g., 1), marks_analysis = "1 mark"
-- **Case Study**: marks = total numerical value (e.g., 3), marks_analysis = descriptive text explaining the mark distribution for each subpart and any internal choices (e.g., "Part (a): 1 mark, Part (b): 2 marks with internal choice, Total: 3 marks")
-- **Internal Choice Subjective**: marks = numerical value (e.g., 5), marks_analysis = array with exactly 2 elements showing the marks for each choice option
 
+## 5. Task
+Analyze the following CBSE Mathematics question paper text. Provide your reasoning first, then the final JSON output.
 """
         
         # Upload file to Gemini
@@ -1466,13 +1379,13 @@ The final output must be in JSON format with the following structure:
             max_output_tokens=60000,
             response_mime_type="text/plain",
             safety_settings=safety_settings,
-            thinking_config=types.ThinkingConfig(thinking_budget=512)
+            thinking_config=types.ThinkingConfig(thinking_budget=1000)
         )
 
         # Generate content
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite-preview-06-17",
-            contents=[pdf_file, system_prompt, user_prompt],
+            model="gemini-2.5-flash",
+            contents=[pdf_file, prompt],
             config=config,
         )
 

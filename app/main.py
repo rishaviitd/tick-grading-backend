@@ -1051,6 +1051,7 @@ async def get_assignments():
     """
     try:
         from database.connection import pipeline_db
+        from bson import ObjectId
         
         # Get assignments collection
         assignments_collection = pipeline_db.db_manager.get_collection("assignments")
@@ -1059,12 +1060,11 @@ async def get_assignments():
         
         # Get questions collection
         questions_collection = pipeline_db.db_manager.get_collection("questions")
+        if questions_collection is None:
+            raise HTTPException(status_code=404, detail="Questions collection not found")
         
         # Get all assignments
         assignments = await assignments_collection.find().to_list(length=None)
-        
-        # Get questions for each assignment
-        questions_collection = pipeline_db.db_manager.get_collection("questions")
         assignments_with_details = []
         
         for assignment in assignments:
@@ -1078,26 +1078,40 @@ async def get_assignments():
                 "updated_at": assignment["updated_at"]
             }
             
-            # Get questions for this assignment
-            if questions_collection is not None:
-                questions = await questions_collection.find({"assignment_id": assignment_data["id"]}).to_list(length=None)
-                assignment_data["question_details"] = []
+            # Get questions for this assignment using the questions array
+            assignment_data["question_details"] = []
+            assignment_data["total_questions"] = 0
+            
+            if assignment.get("questions") and questions_collection is not None:
+                # Extract question IDs from the questions array
+                question_ids = []
+                for question_ref in assignment["questions"]:
+                    if isinstance(question_ref, dict) and "question_id" in question_ref:
+                        question_ids.append(ObjectId(question_ref["question_id"]))
+                    elif isinstance(question_ref, str):
+                        # Handle case where question_ref is directly a string ID
+                        try:
+                            question_ids.append(ObjectId(question_ref))
+                        except:
+                            continue
                 
-                for question in questions:
-                    question_data = {
-                        "id": str(question["_id"]),
-                        "question_identifier": question["question_identifier"],
-                        "has_internal_choice": question["has_internal_choice"],
-                        "primary_question": question["primary_question"],
-                        "secondary_question": question.get("secondary_question"),
-                        "primary_diagram_url": question.get("primary_diagram_url"),
-                        "secondary_diagram_url": question.get("secondary_diagram_url"),
-                        "table_url": question.get("table_url"),
-                        "primary_marks": question["primary_marks"],
-                        "secondary_marks": question.get("secondary_marks"),
-                        "question_type": question["question_type"]
-                    }
-                    assignment_data["question_details"].append(question_data)
+                if question_ids:
+                    # Fetch questions by their ObjectIds
+                    questions = await questions_collection.find({"_id": {"$in": question_ids}}).to_list(length=None)
+                    
+                    for question in questions:
+                        question_data = {
+                            "id": str(question["_id"]),
+                            "question_text": question.get("question_text", ""),
+                            "question_marks": question.get("question_marks", 0),
+                            "question_marks_analysis": question.get("question_marks_analysis", ""),
+                            "question_type": question.get("question_type", ""),
+                            "diagram_url": question.get("diagram_url"),
+                            "table_url": question.get("table_url"),
+                            "created_at": question.get("created_at"),
+                            "updated_at": question.get("updated_at")
+                        }
+                        assignment_data["question_details"].append(question_data)
                 
                 assignment_data["total_questions"] = len(assignment_data["question_details"])
             

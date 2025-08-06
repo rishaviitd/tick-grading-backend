@@ -1,12 +1,5 @@
 {
-  "ques_identifier": "8",
-  "total_marks": 1.0,
   "correct_option": "B",
-  "acceptable_answers": [
-    "B",
-    "b",
-    "Option B (b)",
-    "50°"
-  ],
+  "acceptable_answers": ["B", "b", "Option B (b)", "50°"],
   "solution": "The line segment from the external point to the centre bisects the angle between the tangents. Thus, ∠APO = 80°/2 = 40°. Since the radius OA is perpendicular to the tangent PA, ∠OAP = 90°. In triangle OAP, ∠POA = 180° - 90° - 40° = 50°."
 }

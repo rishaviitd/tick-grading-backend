@@ -11,13 +11,13 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
-from LLM1 import generate_marking_scheme
+from .LLM1 import generate_marking_scheme
 from google import genai
 
 
 def load_metadata_documentation(md_filename: str) -> str:
     """
-    Load a specific markdown documentation file from the same folder.
+    Load a specific markdown documentation file from the guide folder.
     
     Args:
         md_filename: Name of the markdown file to load
@@ -26,7 +26,8 @@ def load_metadata_documentation(md_filename: str) -> str:
         Content of the markdown file
     """
     current_dir = Path(__file__).parent
-    md_path = current_dir / md_filename
+    guide_dir = current_dir.parent / "guide"
+    md_path = guide_dir / md_filename
     
     if not md_path.exists():
         raise FileNotFoundError(f"Markdown file not found: {md_filename}")

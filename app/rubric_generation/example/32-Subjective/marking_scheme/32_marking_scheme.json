@@ -1,5 +1,4 @@
 {
-  "ques_identifier": "32",
   "methods": [
     {
       "methodName": "Method 1: Using Pythagorean Theorem",
@@ -8,63 +7,63 @@
           "stepId": "1",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Identifies and defines variables for the base and equal sides of the isosceles triangle.",
-          "Pass if": "Variables for base and equal sides are clearly defined (e.g., 'let base = b', 'let equal sides = a').",
-          "Fail if": "Variables are not defined or are incorrectly defined.",
+          "Teacher_Expectation": "Identifies and defines variables for the base and equal sides of the isosceles triangle.",
+          "Pass_if": "Variables for base and equal sides are clearly defined (e.g., 'let base = b', 'let equal sides = a').",
+          "Fail_if": "Variables are not defined or are incorrectly defined.",
           "guidance": "Ensure variables are clearly defined for the base and equal sides."
         },
         {
           "stepId": "2",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Formulates the perimeter equation using the defined variables.",
-          "Pass if": "The correct equation representing the perimeter is stated (e.g., `b + 2a = 32`).",
-          "Fail if": "The perimeter equation is incorrect.",
+          "Teacher_Expectation": "Formulates the perimeter equation using the defined variables.",
+          "Pass_if": "The correct equation representing the perimeter is stated (e.g., `b + 2a = 32`).",
+          "Fail_if": "The perimeter equation is incorrect.",
           "guidance": "Verify the perimeter equation correctly sums all sides."
         },
         {
           "stepId": "3",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Formulates the equation representing the given ratio between the equal side and the base.",
-          "Pass if": "The correct ratio equation is stated (e.g., `a = (5/6)b`).",
-          "Fail if": "The ratio equation is incorrect.",
+          "Teacher_Expectation": "Formulates the equation representing the given ratio between the equal side and the base.",
+          "Pass_if": "The correct ratio equation is stated (e.g., `a = (5/6)b`).",
+          "Fail_if": "The ratio equation is incorrect.",
           "guidance": "Check that the ratio between the equal side and the base is correctly translated into an equation."
         },
         {
           "stepId": "4",
           "MarkType": "M",
           "marks": "1",
-          "Teacher Expectation": "Solves the system of equations to find the lengths of the base and equal sides.",
-          "Pass if": "Correctly calculates the base (12 cm) and the equal sides (10 cm) by solving the equations.",
-          "Fail if": "Calculation errors lead to incorrect side lengths.",
+          "Teacher_Expectation": "Solves the system of equations to find the lengths of the base and equal sides.",
+          "Pass_if": "Correctly calculates the base (12 cm) and the equal sides (10 cm) by solving the equations.",
+          "Fail_if": "Calculation errors lead to incorrect side lengths.",
           "guidance": "Award mark for solving the system of equations to find the base and equal sides. Allow ft for previous errors."
         },
         {
           "stepId": "5",
           "MarkType": "M",
           "marks": "0.5",
-          "Teacher Expectation": "Calculates half the length of the base.",
-          "Pass if": "Correctly computes half the base (6 cm).",
-          "Fail if": "The calculation for half the base is incorrect.",
+          "Teacher_Expectation": "Calculates half the length of the base.",
+          "Pass_if": "Correctly computes half the base (6 cm).",
+          "Fail_if": "The calculation for half the base is incorrect.",
           "guidance": "Award mark for correctly calculating half the base, needed for the Pythagorean theorem. Allow ft."
         },
         {
           "stepId": "6",
           "MarkType": "M",
           "marks": "1",
-          "Teacher Expectation": "Applies the Pythagorean theorem to find the height of the triangle.",
-          "Pass if": "Correctly uses the Pythagorean theorem with the equal side as the hypotenuse and half-base as a leg to find the height (8 cm).",
-          "Fail if": "The Pythagorean theorem is applied incorrectly or the height calculation is wrong.",
+          "Teacher_Expectation": "Applies the Pythagorean theorem to find the height of the triangle.",
+          "Pass_if": "Correctly uses the Pythagorean theorem with the equal side as the hypotenuse and half-base as a leg to find the height (8 cm).",
+          "Fail_if": "The Pythagorean theorem is applied incorrectly or the height calculation is wrong.",
           "guidance": "Award mark for correct application of Pythagoras theorem to find the height. Allow ft for side lengths and half-base."
         },
         {
           "stepId": "7",
           "MarkType": "A",
           "marks": "1",
-          "Teacher Expectation": "Applies the formula for the area of a triangle and calculates the final area.",
-          "Pass if": "Correctly calculates the area using `(1/2) * base * height` (48 sq cm).",
-          "Fail if": "The area calculation is incorrect.",
+          "Teacher_Expectation": "Applies the formula for the area of a triangle and calculates the final area.",
+          "Pass_if": "Correctly calculates the area using `(1/2) * base * height` (48 sq cm).",
+          "Fail_if": "The area calculation is incorrect.",
           "guidance": "Award mark for the correct final area calculation. Allow ft for base and height."
         }
       ]
@@ -76,54 +75,54 @@
           "stepId": "1",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Identifies and defines variables for the base and equal sides of the isosceles triangle.",
-          "Pass if": "Variables for base and equal sides are clearly defined (e.g., 'let base = b', 'let equal sides = a').",
-          "Fail if": "Variables are not defined or are incorrectly defined.",
+          "Teacher_Expectation": "Identifies and defines variables for the base and equal sides of the isosceles triangle.",
+          "Pass_if": "Variables for base and equal sides are clearly defined (e.g., 'let base = b', 'let equal sides = a').",
+          "Fail_if": "Variables are not defined or are incorrectly defined.",
           "guidance": "Ensure variables are clearly defined for the base and equal sides."
         },
         {
           "stepId": "2",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Formulates the perimeter equation using the defined variables.",
-          "Pass if": "The correct equation representing the perimeter is stated (e.g., `b + 2a = 32`).",
-          "Fail if": "The perimeter equation is incorrect.",
+          "Teacher_Expectation": "Formulates the perimeter equation using the defined variables.",
+          "Pass_if": "The correct equation representing the perimeter is stated (e.g., `b + 2a = 32`).",
+          "Fail_if": "The perimeter equation is incorrect.",
           "guidance": "Verify the perimeter equation correctly sums all sides."
         },
         {
           "stepId": "3",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Formulates the equation representing the given ratio between the equal side and the base.",
-          "Pass if": "The correct ratio equation is stated (e.g., `a = (5/6)b`).",
-          "Fail if": "The ratio equation is incorrect.",
+          "Teacher_Expectation": "Formulates the equation representing the given ratio between the equal side and the base.",
+          "Pass_if": "The correct ratio equation is stated (e.g., `a = (5/6)b`).",
+          "Fail_if": "The ratio equation is incorrect.",
           "guidance": "Check that the ratio between the equal side and the base is correctly translated into an equation."
         },
         {
           "stepId": "4",
           "MarkType": "M",
           "marks": "1",
-          "Teacher Expectation": "Solves the system of equations to find the lengths of the base and equal sides.",
-          "Pass if": "Correctly calculates the base (12 cm) and the equal sides (10 cm) by solving the equations.",
-          "Fail if": "Calculation errors lead to incorrect side lengths.",
+          "Teacher_Expectation": "Solves the system of equations to find the lengths of the base and equal sides.",
+          "Pass_if": "Correctly calculates the base (12 cm) and the equal sides (10 cm) by solving the equations.",
+          "Fail_if": "Calculation errors lead to incorrect side lengths.",
           "guidance": "Award mark for solving the system of equations to find the base and equal sides. Allow ft for previous errors."
         },
         {
           "stepId": "5",
           "MarkType": "M",
           "marks": "1",
-          "Teacher Expectation": "Calculates the semi-perimeter of the triangle.",
-          "Pass if": "Correctly computes the semi-perimeter (`s = 16` cm).",
-          "Fail if": "The calculation for the semi-perimeter is incorrect.",
+          "Teacher_Expectation": "Calculates the semi-perimeter of the triangle.",
+          "Pass_if": "Correctly computes the semi-perimeter (`s = 16` cm).",
+          "Fail_if": "The calculation for the semi-perimeter is incorrect.",
           "guidance": "Award mark for correctly calculating the semi-perimeter. Allow ft for side lengths."
         },
         {
           "stepId": "6",
           "MarkType": "A",
           "marks": "1",
-          "Teacher Expectation": "Applies Heron's formula using the calculated side lengths and semi-perimeter to find the area.",
-          "Pass if": "Correctly applies Heron's formula and calculates the final area (48 sq cm).",
-          "Fail if": "Heron's formula is applied incorrectly or the final area calculation is wrong.",
+          "Teacher_Expectation": "Applies Heron's formula using the calculated side lengths and semi-perimeter to find the area.",
+          "Pass_if": "Correctly applies Heron's formula and calculates the final area (48 sq cm).",
+          "Fail_if": "Heron's formula is applied incorrectly or the final area calculation is wrong.",
           "guidance": "Award mark for the correct application of Heron's formula and the final area calculation. Allow ft for side lengths and semi-perimeter."
         }
       ]

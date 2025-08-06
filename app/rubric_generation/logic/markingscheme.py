@@ -47,7 +47,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
-from LLM1 import generate_marking_scheme
+from .LLM1 import generate_marking_scheme
 
 
 # Configure logging
@@ -296,7 +296,8 @@ def load_documentation(md_filename: str) -> str:
         return _doc_cache[md_filename]
     
     current_dir = Path(__file__).parent
-    md_path = current_dir / md_filename
+    guide_dir = current_dir.parent / "guide"
+    md_path = guide_dir / md_filename
     
     if not md_path.exists():
         raise FileNotFoundError(f"Markdown file not found: {md_filename}")
@@ -416,14 +417,6 @@ def create_marking_scheme_prompt(
         except Exception as e:
             logger.warning(f"Could not load solution file {solution_file_path}: {e}")
     
-    # Load CIE Marking Glossary
-    cie_glossary = ""
-    try:
-        cie_glossary = load_documentation("CIE_Marking_Glossary.md")
-        logger.info("Loaded CIE Marking Glossary")
-    except Exception as e:
-        logger.warning(f"Could not load CIE Marking Glossary: {e}")
-        
 
 
     prompt = f"""

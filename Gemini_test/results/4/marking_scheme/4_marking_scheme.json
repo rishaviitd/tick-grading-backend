@@ -1,0 +1,81 @@
+{
+  "ques_identifier": "4",
+  "parts": [
+    {
+      "part_label": "i",
+      "methods": [
+        {
+          "methodName": "Direct Identification of a Concept/Term",
+          "markingPoints": [
+            {
+              "stepId": "i_1",
+              "MarkType": "B",
+              "marks": "1",
+              "Teacher Expectation": "Identify the specific term or concept from the case study that the question is asking for.",
+              "Pass if": "The correct term/concept is explicitly stated or clearly referenced from the case study text.",
+              "Fail if": "An incorrect term/concept is identified, or the identification is vague/missing.",
+              "guidance": "Award mark if the correct term/concept is clearly stated or referenced from the case study text. Award no mark if the identification is incorrect, vague, or missing."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "ii",
+      "methods": [
+        {
+          "methodName": "Stating a Property or Simple Value",
+          "markingPoints": [
+            {
+              "stepId": "ii_1",
+              "MarkType": "A",
+              "marks": "1",
+              "Teacher Expectation": "State the required property or calculate the simple value based on the case study context or the concept identified in Part (i).",
+              "Pass if": "The correct property is stated or the correct simple value is calculated.",
+              "Fail if": "The stated property or calculated value is incorrect.",
+              "guidance": "Award mark if the correct property is stated or the correct simple value is calculated. Award no mark if the stated property or calculated value is incorrect."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "part_label": "iii",
+      "methods": [
+        {
+          "methodName": "Application of a Formula/Principle",
+          "markingPoints": [
+            {
+              "stepId": "iii_1",
+              "MarkType": "B",
+              "marks": "0.5",
+              "Teacher Expectation": "Recall and state the relevant mathematical formula or principle applicable to the scenario described in the case study.",
+              "Pass if": "The correct and complete formula/principle is written.",
+              "Fail if": "An incorrect or incomplete formula/principle is written.",
+              "guidance": "Award mark if the correct and complete formula/principle is written. Award no mark if the formula/principle is incorrect or incomplete."
+            },
+            {
+              "stepId": "iii_2",
+              "MarkType": "M",
+              "marks": "0.5",
+              "Teacher Expectation": "Substitute the correct numerical values from the case study (and potentially results from previous parts) into the identified formula.",
+              "Pass if": "All required values are substituted correctly into the formula.",
+              "Fail if": "Any value is substituted incorrectly, or values are omitted.",
+              "guidance": "Award mark if all required values are substituted correctly into the formula. Award no mark if any value is substituted incorrectly or values are omitted. ft/ecf can be applied if previous part's answer was used and was incorrect."
+            },
+            {
+              "stepId": "iii_3",
+              "MarkType": "A",
+              "marks": "1",
+              "Teacher Expectation": "Perform the calculation accurately to arrive at the final answer, including units where appropriate.",
+              "Pass if": "The final numerical answer is correct, and units are included if required.",
+              "Fail if": "The calculation is erroneous, or units are missing/incorrect.",
+              "guidance": "Award mark for the correct final answer, including units if appropriate. Award no mark if the calculation is erroneous or units are missing/incorrect. ft/ecf can be applied if previous part's answer was used and was incorrect."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "Question_specific_notes": "For parts with internal choices, both alternatives should be marked. The candidate should be awarded the marks for the alternative in which they have scored higher. The marks for the other alternative should be disregarded. Penalise for missing units at the final answer stage only."
+}

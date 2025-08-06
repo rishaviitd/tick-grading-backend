@@ -1127,3 +1127,127 @@ async def get_assignments():
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get assignments: {str(e)}")
+
+
+# Models for rubric generation
+class RubricGenerationRequest(BaseModel):
+    question: dict  # Question object from current schema
+
+class RubricGenerationResponse(BaseModel):
+    success: bool
+    rubric: Optional[dict] = None
+    metadata: Optional[dict] = None
+    solution: Optional[str] = None  # Solution is markdown text, not JSON
+    marking_scheme: Optional[dict] = None
+    output_dir: Optional[str] = None
+    errors: List[str] = []
+    total_time: Optional[float] = None
+    token_counts: Optional[dict] = None
+
+
+@app.post('/build-rubric', response_model=RubricGenerationResponse)
+async def build_rubric(request: RubricGenerationRequest):
+    """
+    Generate rubric for a single question using the current Question schema.
+    
+    Args:
+        request: Contains a question object from the current schema
+        
+    Returns:
+        Generated rubric, metadata, solution, and marking scheme
+    """
+    try:
+        import tempfile
+        import os
+        from pathlib import Path
+        from .rubric_generation.logic.full_paper_pipeline import run_complete_pipeline_current_schema
+        from database.schema import Question
+        
+        # Validate the question data using Pydantic, but handle _id separately
+        try:
+            # Create a copy of the question data without _id for validation
+            question_data_for_validation = request.question.copy()
+            if "_id" in question_data_for_validation:
+                # Remove _id for validation, we'll handle it separately
+                del question_data_for_validation["_id"]
+            
+            question_obj = Question(**question_data_for_validation)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid question data: {str(e)}")
+        
+        # Convert to dict for processing and add _id back if it exists
+        question_data = question_obj.dict()
+        if "_id" in request.question:
+            question_data["_id"] = request.question["_id"]
+        
+        # Create temporary output directory
+        with tempfile.TemporaryDirectory() as temp_output_dir:
+            # Run the rubric generation pipeline
+            results = run_complete_pipeline_current_schema(
+                question_data=question_data,
+                output_dir=temp_output_dir,
+                update_syllabus=False,
+                target_class=None
+            )
+            
+            if not results['success']:
+                return RubricGenerationResponse(
+                    success=False,
+                    errors=results['errors'],
+                    total_time=results['total_time'],
+                    token_counts=results['total_token_counts']
+                )
+            
+            # Read generated files
+            output_path = Path(results['output_dir'])
+            rubric_data = None
+            metadata_data = None
+            solution_data = None
+            marking_scheme_data = None
+            
+            # Read marking scheme (this is the rubric)
+            if results.get('marking_scheme_file'):
+                marking_scheme_path = Path(results['marking_scheme_file'])
+                if marking_scheme_path.exists():
+                    with open(marking_scheme_path, 'r') as f:
+                        marking_scheme_data = json.load(f)
+                        rubric_data = marking_scheme_data  # Marking scheme is the rubric
+            
+            # Read metadata
+            if results.get('metadata_file'):
+                metadata_path = Path(results['metadata_file'])
+                if metadata_path.exists():
+                    with open(metadata_path, 'r') as f:
+                        metadata_data = json.load(f)
+            
+            # Read solution (solution files are markdown, not JSON)
+            if results.get('solution_file'):
+                solution_path = Path(results['solution_file'])
+                if solution_path.exists() and solution_path.stat().st_size > 0:
+                    try:
+                        with open(solution_path, 'r', encoding='utf-8') as f:
+                            solution_data = f.read()  # Read as text, not JSON
+                    except Exception:
+                        solution_data = None
+            
+            return RubricGenerationResponse(
+                success=True,
+                rubric=rubric_data,
+                metadata=metadata_data,
+                solution=solution_data,
+                marking_scheme=marking_scheme_data,
+                output_dir=results['output_dir'],
+                errors=results['errors'],
+                total_time=results['total_time'],
+                token_counts=results['total_token_counts']
+            )
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate rubric: {str(e)}\n{error_details}"
+        )

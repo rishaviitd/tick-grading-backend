@@ -1,5 +1,4 @@
 {
-  "ques_identifier": "23_secondary",
   "methods": [
     {
       "methodName": "Method 1: Using the Product-HCF-LCM Relationship",
@@ -8,36 +7,36 @@
           "stepId": "1",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "Represents the two numbers in the ratio 4:5 as `4x` and `5x`, and identifies that since their HCF is 11, `x` must be 11.",
-          "Pass if": "Correctly represents the numbers as `4x` and `5x` and correctly deduces `x = 11`.",
-          "Fail if": "Incorrect representation of numbers or incorrect identification of `x`.",
+          "Teacher_Expectation": "Represents the two numbers in the ratio 4:5 as `4x` and `5x`, and identifies that since their HCF is 11, `x` must be 11.",
+          "Pass_if": "Correctly represents the numbers as `4x` and `5x` and correctly deduces `x = 11`.",
+          "Fail_if": "Incorrect representation of numbers or incorrect identification of `x`.",
           "guidance": "Ensure numbers are represented as 4x and 5x, and x is correctly identified as 11."
         },
         {
           "stepId": "2",
           "MarkType": "M",
           "marks": "0.5",
-          "Teacher Expectation": "Calculates the actual values of the two numbers by substituting `x = 11`.",
-          "Pass if": "Correctly calculates the numbers as `4 × 11 = 44` and `5 × 11 = 55`.",
-          "Fail if": "Calculation error in finding either number.",
+          "Teacher_Expectation": "Calculates the actual values of the two numbers by substituting `x = 11`.",
+          "Pass_if": "Correctly calculates the numbers as `4 × 11 = 44` and `5 × 11 = 55`.",
+          "Fail_if": "Calculation error in finding either number.",
           "guidance": "Verify the calculation of both numbers (44 and 55) from the representation in Step 1."
         },
         {
           "stepId": "3",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "States the fundamental relationship between the product of two numbers, their HCF, and their LCM.",
-          "Pass if": "Correctly states `Product of two numbers = HCF × LCM`.",
-          "Fail if": "States an incorrect relationship.",
+          "Teacher_Expectation": "States the fundamental relationship between the product of two numbers, their HCF, and their LCM.",
+          "Pass_if": "Correctly states `Product of two numbers = HCF × LCM`.",
+          "Fail_if": "States an incorrect relationship.",
           "guidance": "Confirm the correct statement of the relationship: Product of numbers = HCF × LCM."
         },
         {
           "stepId": "4",
           "MarkType": "A",
           "marks": "0.5",
-          "Teacher Expectation": "Substitutes the calculated numbers and the given HCF into the relationship and solves for the LCM.",
-          "Pass if": "Correctly calculates `LCM = (44 × 55) / 11 = 220`.",
-          "Fail if": "Incorrect substitution or calculation error leading to the wrong LCM.",
+          "Teacher_Expectation": "Substitutes the calculated numbers and the given HCF into the relationship and solves for the LCM.",
+          "Pass_if": "Correctly calculates `LCM = (44 × 55) / 11 = 220`.",
+          "Fail_if": "Incorrect substitution or calculation error leading to the wrong LCM.",
           "guidance": "Check the substitution into the formula and the final calculation of the LCM (220)."
         }
       ]
@@ -49,36 +48,36 @@
           "stepId": "1",
           "MarkType": "B",
           "marks": "0.5",
-          "Teacher Expectation": "States the property that if two numbers are in the ratio `a:b` and their HCF is `h`, then their LCM is `abh`.",
-          "Pass if": "Correctly states or implies the property `LCM = a × b × h` for numbers in ratio `a:b` with HCF `h`.",
-          "Fail if": "States an incorrect property or formula.",
+          "Teacher_Expectation": "States the property that if two numbers are in the ratio `a:b` and their HCF is `h`, then their LCM is `abh`.",
+          "Pass_if": "Correctly states or implies the property `LCM = a × b × h` for numbers in ratio `a:b` with HCF `h`.",
+          "Fail_if": "States an incorrect property or formula.",
           "guidance": "Confirm the correct formula for LCM of numbers in ratio a:b with HCF h is stated or implied (LCM = abh)."
         },
         {
           "stepId": "2",
           "MarkType": "M",
           "marks": "0.5",
-          "Teacher Expectation": "Identifies the values of `a`, `b`, and `h` from the given problem statement.",
-          "Pass if": "Correctly identifies `a=4`, `b=5`, and `h=11`.",
-          "Fail if": "Incorrectly identifies any of these values.",
+          "Teacher_Expectation": "Identifies the values of `a`, `b`, and `h` from the given problem statement.",
+          "Pass_if": "Correctly identifies `a=4`, `b=5`, and `h=11`.",
+          "Fail_if": "Incorrectly identifies any of these values.",
           "guidance": "Ensure the ratio components (a=4, b=5) and the HCF (h=11) are correctly identified from the question."
         },
         {
           "stepId": "3",
           "MarkType": "M",
           "marks": "0.5",
-          "Teacher Expectation": "Substitutes these identified values into the LCM formula `LCM = a × b × h`.",
-          "Pass if": "Correctly substitutes the values to get `LCM = 4 × 5 × 11`.",
-          "Fail if": "Incorrect substitution into the formula.",
+          "Teacher_Expectation": "Substitutes these identified values into the LCM formula `LCM = a × b × h`.",
+          "Pass_if": "Correctly substitutes the values to get `LCM = 4 × 5 × 11`.",
+          "Fail_if": "Incorrect substitution into the formula.",
           "guidance": "Check that the identified values are correctly substituted into the LCM formula."
         },
         {
           "stepId": "4",
           "MarkType": "A",
           "marks": "0.5",
-          "Teacher Expectation": "Calculates the final LCM from the substituted expression.",
-          "Pass if": "Correctly calculates `4 × 5 × 11 = 220`.",
-          "Fail if": "Calculation error leads to the wrong LCM.",
+          "Teacher_Expectation": "Calculates the final LCM from the substituted expression.",
+          "Pass_if": "Correctly calculates `4 × 5 × 11 = 220`.",
+          "Fail_if": "Calculation error leads to the wrong LCM.",
           "guidance": "Verify the final calculation of the LCM (220)."
         }
       ]

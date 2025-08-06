@@ -36,7 +36,7 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from dotenv import load_dotenv
-from LLM1 import generate_marking_scheme
+from .LLM1 import generate_marking_scheme
 
 
 # Configure logging
@@ -106,7 +106,16 @@ def load_documentation(md_filename: str) -> str:
         return _doc_cache[md_filename]
     
     current_dir = Path(__file__).parent
-    md_path = current_dir / md_filename
+    parent_dir = current_dir.parent
+    
+    # Try guide directory first
+    guide_dir = parent_dir / "guide"
+    md_path = guide_dir / md_filename
+    
+    # If not found in guide, try prompt directory
+    if not md_path.exists():
+        prompt_dir = parent_dir / "prompt"
+        md_path = prompt_dir / md_filename
     
     if not md_path.exists():
         raise FileNotFoundError(f"Markdown file not found: {md_filename}")

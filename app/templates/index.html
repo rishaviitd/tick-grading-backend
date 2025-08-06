@@ -850,6 +850,25 @@
         min-height: 100px;
       }
 
+      .question-table-full {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 16px 0;
+        width: 100%;
+      }
+
+      .question-table-full .table-container {
+        width: 100%;
+        max-width: none;
+      }
+
+      .question-table-full .table-thumbnail {
+        width: 100%;
+        height: auto;
+        max-width: none;
+      }
+
       .table-container {
         background: var(--surface);
         border: 1px solid var(--border-soft);
@@ -3084,12 +3103,13 @@
                       .map((q, index) => {
                         // Create diagram/table display if available
                         let visualDisplay = "";
+                        let tableDisplay = "";
                         if (q.diagram_url) {
                           visualDisplay = `<div class="question-diagram">
                             <img src="${q.diagram_url}" alt="Question Diagram" class="diagram-thumbnail" />
                           </div>`;
                         } else if (q.table_url) {
-                          visualDisplay = `<div class="question-table">
+                          tableDisplay = `<div class="question-table-full">
                             <div class="table-container">
                               <div class="table-header">
                                 <span class="table-icon">📊</span>
@@ -3165,6 +3185,7 @@
                             ${questionContent}
                             ${visualDisplay}
                           </div>
+                          ${tableDisplay}
                           <div class="question-meta">
                             <span class="question-marks-analysis">${
                               q.question_marks_analysis || ""
@@ -3408,22 +3429,22 @@
                     `
                         : ""
                     }
-                    ${
-                      q.table_url
-                        ? `
-                      <div style="flex-shrink: 0;">
-                        <div style="background: var(--surface); border: 1px solid var(--border-soft); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);">
-                          <div style="background: var(--primary-soft); padding: 6px 10px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border-soft);">
-                            <span style="font-size: 0.9rem;">📊</span>
-                            <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">Data Table</span>
-                          </div>
-                          <img src="${q.table_url}" alt="Question Table" style="width: 150px; height: 120px; object-fit: contain; background: var(--surface); padding: 4px;" />
-                        </div>
-                      </div>
-                    `
-                        : ""
-                    }
                   </div>
+                  ${
+                    q.table_url
+                      ? `
+                    <div style="display: flex; align-items: center; justify-content: center; margin: 16px 0; width: 100%;">
+                      <div style="background: var(--surface); border: 1px solid var(--border-soft); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04); width: 100%;">
+                        <div style="background: var(--primary-soft); padding: 6px 10px; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border-soft);">
+                          <span style="font-size: 0.9rem;">📊</span>
+                          <span style="font-size: 0.75rem; font-weight: 500; color: var(--text-secondary);">Data Table</span>
+                        </div>
+                        <img src="${q.table_url}" alt="Question Table" style="width: 100%; height: auto; object-fit: contain; background: var(--surface); padding: 8px;" />
+                      </div>
+                    </div>
+                  `
+                      : ""
+                  }
                   <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <span style="background: var(--background-soft); color: var(--text-secondary); padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; border: 1px solid var(--border-soft);">${
                       q.question_type || "Question"

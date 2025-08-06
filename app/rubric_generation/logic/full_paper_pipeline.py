@@ -25,9 +25,9 @@ from typing import Dict, List, Optional, Any
 import requests
 
 # Import the pipeline components
-import metadata_gen
-import soln_gen
-import markingscheme
+from . import metadata_gen
+from . import soln_gen
+from . import markingscheme
 
 def setup_logging(log_level: str = "INFO", log_file: str = None) -> None:
     """
@@ -364,105 +364,247 @@ def create_summary_report(results: Dict[str, Any], output_dir: Path) -> None:
     except Exception as e:
         logging.error(f"Could not create summary report: {e}")
 
-def preprocess_input(new_format_json_path: str, temp_dir: str, target_class: Optional[str]) -> Dict[str, Any]:
+def preprocess_current_question(question_data: Dict[str, Any], temp_dir: str, target_class: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Preprocess a single question object from the current Question schema format.
     
-    with open(new_format_json_path, 'r') as f:
-        data = json.load(f)
-
+    Args:
+        question_data: Question object from current schema
+        temp_dir: Temporary directory for processing
+        target_class: Optional target class for the question
+        
+    Returns:
+        Dictionary containing processing configs and metadata
+    """
+    
+    # Download images from URLs (needed for Gemini models)
     image_files = []
-    for url_key in ['primary_diagram_url', 'secondary_diagram_url']:
-        if data.get(url_key):
+    for url_key in ['diagram_url', 'table_url']:
+        if question_data.get(url_key):
             try:
-                response = requests.get(data[url_key], stream=True, timeout=60)
+                response = requests.get(question_data[url_key], stream=True, timeout=60)
                 response.raise_for_status()
                 
-                img_path = os.path.join(temp_dir, os.path.basename(data[url_key]))
+                img_path = os.path.join(temp_dir, os.path.basename(question_data[url_key]))
                 with open(img_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
                 image_files.append(img_path)
+                logging.info(f"Downloaded image: {img_path}")
             except requests.exceptions.RequestException as e:
-                logging.warning(f"Could not download image from {data[url_key]}: {e}")
+                logging.warning(f"Could not download image from {question_data[url_key]}: {e}")
 
+    # Extract question identifier from question text
+    def extract_question_number(question_text: str) -> str:
+        """Extract question number from question text."""
+        import re
+        match = re.search(r'^(\d+)\.', question_text.strip())
+        return match.group(1) if match else "unknown"
+
+    # Question type mapping for current schema
     question_type_mapping = {
         "MCQ": "MCQ",
         "Assertion Reasoning": "Assertion-Reason",
-        "Internal Choice Subjective": "Internal Choice",
-        "Normal Subjective": "Subjective",
-        "Case Study": "Case-Study"
+        "Subjective": "Subjective",
+        "Internal Choice": "Subjective",  # Handle as regular subjective
+        "Case-Study": "Case-Study"
     }
-    question_type = question_type_mapping.get(data.get("question_type"), "Subjective")
+    
+    question_type = question_type_mapping.get(question_data.get("question_type"), "Subjective")
+    
+    # Extract question identifier
+    ques_identifier = extract_question_number(question_data.get("question_text", ""))
+    
+    # Create processing config for the current schema
+    config = {
+        "_id": question_data.get("_id"),
+        "run_id": question_data.get("run_id", "current_run"),
+        "ques_identifier": ques_identifier,
+        "ques_text": question_data.get("question_text"),
+        "marks_analysis": question_data.get("question_marks_analysis"),
+        "question_type": question_type,
+        "total_marks": float(question_data.get("question_marks", 0))
+    }
+    
+    if target_class:
+        config["target_class"] = target_class
+    
+    # Create processing file
+    processing_file_path = os.path.join(temp_dir, f"{ques_identifier}.json")
+    with open(processing_file_path, 'w') as f:
+        json.dump(config, f, indent=2)
+    
+    # Create source file (for compatibility)
+    temp_processed_json_path = os.path.join(temp_dir, "source.json")
+    
+    # Convert datetime objects to strings for JSON serialization
+    def convert_datetime_to_str(obj):
+        if isinstance(obj, dict):
+            return {k: convert_datetime_to_str(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [convert_datetime_to_str(item) for item in obj]
+        elif hasattr(obj, 'isoformat'):  # datetime objects
+            return obj.isoformat()
+        else:
+            return obj
+    
+    serializable_data = convert_datetime_to_str(question_data)
+    with open(temp_processed_json_path, 'w') as f:
+        json.dump(serializable_data, f, indent=2)
 
-    # This will store the path to the final, processed JSON that should be saved in 'source'
-    temp_processed_json_path = os.path.join(temp_dir, "tmp.json")
+    return {
+        'configs': [{
+            'question_file': processing_file_path,
+            'image_paths': image_files,
+            'question_type': question_type
+        }],
+        'temp_processed_json_path': temp_processed_json_path,
+        'is_internal_choice': False  # Current schema handles internal choice as separate objects
+    }
 
-    if question_type == "Internal Choice":
-        # For internal choice, we create two separate configs for processing
-        # but the final source JSON will be a single file combining results.
-        # This part of the logic might need further refinement based on how you want to store internal choice results.
-        # For now, we'll just process them separately.
-        configs = []
-        original_identifier = data.get("question_identifier")
+def run_complete_pipeline_current_schema(
+    question_data: Dict[str, Any],
+    output_dir: str,
+    update_syllabus: bool,
+    target_class: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Run complete rubric generation pipeline for a single question from current schema.
+    
+    Args:
+        question_data: Question object from current schema
+        output_dir: Output directory for results
+        update_syllabus: Whether to update syllabus
+        target_class: Optional target class
         
-        primary_config = {
-            "_id": data.get("_id"), "run_id": data.get("run_id"),
-            "ques_identifier": f"{original_identifier}_primary",
-            "ques_text": data.get("primary_question"),
-            "marks_analysis": data.get("primary_marks"), "question_type": "Subjective",
-        }
-        if target_class:
-            primary_config["target_class"] = target_class
-        primary_file_path = os.path.join(temp_dir, f"{primary_config['ques_identifier']}.json")
-        with open(primary_file_path, 'w') as f: json.dump(primary_config, f)
-        configs.append({'question_file': primary_file_path, 'image_paths': image_files, 'question_type': "Subjective"})
+    Returns:
+        Dictionary containing pipeline results
+    """
+    
+    start_time = time.time()
+    total_token_counts = {'prompt': 0, 'thoughts': 0, 'output': 0}
+    
+    # Extract question identifier for output directory
+    def extract_question_number(question_text: str) -> str:
+        import re
+        match = re.search(r'^(\d+)\.', question_text.strip())
+        return match.group(1) if match else "unknown"
+    
+    question_id = extract_question_number(question_data.get("question_text", ""))
+    
+    # Create output directory
+    output_path = create_output_directory(output_dir, question_id)
+    
+    results = {
+        'question_id': question_id,
+        'output_dir': str(output_path),
+        'steps': {},
+        'errors': [],
+        'total_time': 0,
+        'success': False,
+        'total_token_counts': total_token_counts
+    }
 
-        secondary_config = {
-            "_id": data.get("_id"), "run_id": data.get("run_id"),
-            "ques_identifier": f"{original_identifier}_secondary",
-            "ques_text": data.get("secondary_question"),
-            "marks_analysis": data.get("secondary_marks"), "question_type": "Subjective",
-        }
-        if target_class:
-            secondary_config["target_class"] = target_class
-        secondary_file_path = os.path.join(temp_dir, f"{secondary_config['ques_identifier']}.json")
-        with open(secondary_file_path, 'w') as f: json.dump(secondary_config, f)
-        configs.append({'question_file': secondary_file_path, 'image_paths': image_files, 'question_type': "Subjective"})
+    with tempfile.TemporaryDirectory() as temp_dir:
+        preprocess_result = preprocess_current_question(question_data, temp_dir, target_class)
+        configs = preprocess_result['configs']
+        is_internal_choice = preprocess_result.get('is_internal_choice', False)
         
-        # Create the base structure for the final combined source file
-        final_source_data = data.copy()
-        with open(temp_processed_json_path, 'w') as f:
-            json.dump(final_source_data, f)
+        # Keep track of total marks
+        total_marks_agg = 0.0
+        all_image_paths = []
 
-        return {'configs': configs, 'temp_processed_json_path': temp_processed_json_path, 'is_internal_choice': True}
+        for config in configs:
+            question_file_old_format = config['question_file']
+            image_paths = config['image_paths']
+            question_type = config['question_type']
+            all_image_paths.extend(image_paths)
 
-    else:
-        # For all other types, create a single config and the final source JSON is based on this.
-        config = {
-            "_id": data.get("_id"), "run_id": data.get("run_id"),
-            "ques_identifier": data.get("question_identifier"),
-            "ques_text": data.get("primary_question"),
-            "marks_analysis": data.get("primary_marks"), "question_type": question_type,
-        }
-        if target_class:
-            config["target_class"] = target_class
-        # This file is used for processing by metadata, solution, etc.
-        processing_file_path = os.path.join(temp_dir, f"{config['ques_identifier']}.json")
-        with open(processing_file_path, 'w') as f:
-            json.dump(config, f)
-        
-        # This file will be the basis for the final <id>.json in the source folder
-        with open(temp_processed_json_path, 'w') as f:
-            json.dump(data, f)
+            with open(question_file_old_format, 'r', encoding='utf-8') as f:
+                question_data_processed = json.load(f)
+            
+            question_id = question_data_processed.get("ques_identifier", "unknown")
+            results['question_id'] = question_id
+            
+            step_start = time.time()
+            metadata_file, usage_metadata = run_metadata_generation(
+                question_file=question_file_old_format, image_paths=image_paths, output_dir=output_path
+            )
+            if usage_metadata:
+                total_token_counts['prompt'] += usage_metadata.prompt_token_count
+                total_token_counts['thoughts'] += usage_metadata.thoughts_token_count
+                total_token_counts['output'] += usage_metadata.candidates_token_count
 
-        return {
-            'configs': [{
-                'question_file': processing_file_path,
-                'image_paths': image_files,
-                'question_type': question_type
-            }],
-            'temp_processed_json_path': temp_processed_json_path,
-            'is_internal_choice': False
-        }
+            step_time = time.time() - step_start
+            results['steps'][f'metadata_{question_id}'] = {'success': metadata_file is not None, 'output_file': metadata_file, 'time': f"{step_time:.2f}"}
+            
+            if not metadata_file:
+                results['errors'].append(f"Metadata generation failed for {question_id}")
+                continue
+            results['metadata_file'] = metadata_file
+            
+            solution_file = None
+            if question_type not in ["MCQ", "Assertion-Reason"]:
+                step_start = time.time()
+                solution_file, usage_metadata = run_solution_generation(
+                    question_file=question_file_old_format, metadata_file=metadata_file,
+                    image_paths=image_paths, output_dir=output_path
+                )
+                if usage_metadata:
+                    total_token_counts['prompt'] += usage_metadata.prompt_token_count
+                    total_token_counts['thoughts'] += usage_metadata.thoughts_token_count
+                    total_token_counts['output'] += usage_metadata.candidates_token_count
+
+                step_time = time.time() - step_start
+                results['steps'][f'solution_{question_id}'] = {'success': solution_file is not None, 'output_file': solution_file, 'time': f"{step_time:.2f}"}
+                
+                if not solution_file:
+                    results['errors'].append(f"Solution generation failed for {question_id}")
+                    continue
+                results['solution_file'] = solution_file
+            
+            step_start = time.time()
+            marking_scheme_json, usage_metadata = run_marking_scheme_generation(
+                question_file=question_file_old_format, metadata_file=metadata_file,
+                solution_file=solution_file, image_paths=image_paths, output_dir=output_path
+            )
+            if usage_metadata:
+                total_token_counts['prompt'] += usage_metadata.prompt_token_count
+                total_token_counts['thoughts'] += usage_metadata.thoughts_token_count
+                total_token_counts['output'] += usage_metadata.candidates_token_count
+
+            step_time = time.time() - step_start
+            
+            marking_scheme_file_path = output_path / "marking_scheme" / f"{question_id}_marking_scheme.json"
+            results['steps'][f'marking_scheme_{question_id}'] = {'success': marking_scheme_json is not None, 'output_file': str(marking_scheme_file_path), 'time': f"{step_time:.2f}"}
+            
+            if not marking_scheme_json:
+                results['errors'].append(f"Marking scheme generation failed for {question_id}")
+                continue
+            results['marking_scheme_file'] = str(marking_scheme_file_path)
+
+            if marking_scheme_json and 'total_marks' in marking_scheme_json:
+                total_marks_agg = float(marking_scheme_json['total_marks'])
+
+        # Copy source files
+        copy_source_files(
+            original_question_file=preprocess_result['temp_processed_json_path'],
+            image_paths=list(set(all_image_paths)),
+            output_dir=output_path,
+            configs=configs,
+            is_internal_choice=is_internal_choice,
+            total_marks=total_marks_agg if total_marks_agg > 0 else None
+        )
+
+    total_time = time.time() - start_time
+    results['total_time'] = total_time
+    results['success'] = not results['errors']
+    results['total_token_counts'] = total_token_counts
+    
+    create_summary_report(results, Path(results['output_dir']))
+    
+    return results
+
 
 def run_complete_pipeline(
     question_file: str,

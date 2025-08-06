@@ -1,0 +1,74 @@
+{
+  "ques_identifier": "2",
+  "methods": [
+    {
+      "methodName": "Explanation of Object-Oriented Programming",
+      "markingPoints": [
+        {
+          "stepId": "1",
+          "MarkType": "B",
+          "marks": "0.5",
+          "Teacher Expectation": "States a clear definition of Object-Oriented Programming (OOP) as a programming paradigm that organizes software design around data, or objects, rather than functions and logic.",
+          "Pass if": "Provides a correct and concise definition of OOP.",
+          "Fail if": "The definition is inaccurate or missing.",
+          "guidance": "Award 0.5 marks for a correct definition of OOP as a programming paradigm centered on objects."
+        },
+        {
+          "stepId": "2",
+          "MarkType": "M",
+          "marks": "0.5",
+          "Teacher Expectation": "Explains the concept of an 'object' as a fundamental unit in OOP, representing a real-world entity that contains both data (attributes/properties) and behaviors (methods/functions).",
+          "Pass if": "Correctly describes an object and its components (data and behavior).",
+          "Fail if": "Fails to explain what an object is or its constituent parts.",
+          "guidance": "Award 0.5 marks for correctly defining an object as an instance containing data (attributes) and methods (behaviors)."
+        },
+        {
+          "stepId": "3",
+          "MarkType": "M",
+          "marks": "0.5",
+          "Teacher Expectation": "Explains the concept of a 'class' as a blueprint or template for creating objects, defining the structure (attributes) and behavior (methods) that objects of that class will have.",
+          "Pass if": "Correctly defines a class as a blueprint for objects.",
+          "Fail if": "Fails to explain the role of a class.",
+          "guidance": "Award 0.5 marks for defining a class as a blueprint that dictates the structure and behavior of objects."
+        },
+        {
+          "stepId": "4",
+          "MarkType": "M",
+          "marks": "1",
+          "Teacher Expectation": "Defines Encapsulation and explains its role in bundling data (attributes) and methods that operate on the data within a single unit (class), and its purpose of data hiding.",
+          "Pass if": "Correctly defines Encapsulation and explains data bundling and data hiding.",
+          "Fail if": "The definition or explanation of Encapsulation is incorrect or incomplete.",
+          "guidance": "Award 1 mark for a correct definition of Encapsulation, including bundling of data/methods and the concept of data hiding."
+        },
+        {
+          "stepId": "5",
+          "MarkType": "M",
+          "marks": "0.5",
+          "Teacher Expectation": "Defines Abstraction and explains its role in hiding complex implementation details while exposing only the essential features or functionalities to the user.",
+          "Pass if": "Correctly defines Abstraction and explains the concept of hiding complexity.",
+          "Fail if": "The definition or explanation of Abstraction is incorrect or incomplete.",
+          "guidance": "Award 0.5 marks for defining Abstraction, focusing on hiding complexity and showing essential features."
+        },
+        {
+          "stepId": "6",
+          "MarkType": "M",
+          "marks": "1",
+          "Teacher Expectation": "Defines Inheritance and explains its role in allowing new classes (child classes) to acquire properties and behaviors from existing classes (parent classes), promoting code reusability and establishing relationships.",
+          "Pass if": "Correctly defines Inheritance and explains code reusability.",
+          "Fail if": "The definition or explanation of Inheritance is incorrect or incomplete.",
+          "guidance": "Award 1 mark for a correct definition of Inheritance, emphasizing code reusability and parent-child class relationships."
+        },
+        {
+          "stepId": "7",
+          "MarkType": "A",
+          "marks": "1",
+          "Teacher Expectation": "Defines Polymorphism and explains its role in allowing objects of different classes to respond to the same method call in their own specific ways, enabling flexibility and extensibility.",
+          "Pass if": "Correctly defines Polymorphism and explains its benefit of flexibility.",
+          "Fail if": "The definition or explanation of Polymorphism is incorrect or incomplete.",
+          "guidance": "Award 1 mark for a correct definition of Polymorphism, highlighting its role in enabling objects to respond differently to the same method call and providing flexibility."
+        }
+      ]
+    }
+  ],
+  "Question_specific_notes": "This question assesses understanding of fundamental OOP concepts. Ensure students define OOP, objects, classes, and at least three of the four core principles (Encapsulation, Abstraction, Inheritance, Polymorphism) with reasonable accuracy. Marks are allocated to foundational definitions and the core principles. Prioritize clear explanations of the principles for higher marks."
+}

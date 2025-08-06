@@ -1,0 +1,13 @@
+{
+  "id": "6893b847122952e3c3dca594",
+  "question_text": "1. What is the capital of France?",
+  "question_marks": 2,
+  "question_marks_analysis": "2 marks for correct answer",
+  "question_type": "MCQ",
+  "diagram_url": null,
+  "table_url": null,
+  "rubric": null,
+  "created_at": "2024-01-01T00:00:00+00:00",
+  "updated_at": "2024-01-01T00:00:00+00:00",
+  "_id": "507f1f77bcf86cd799439011"
+}

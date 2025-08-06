@@ -66,7 +66,7 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-## API Endpoints
+## API Endpoint
 
 - `POST /crop-margins`: Process response images with margin cropping and image enhancement
 - `POST /parse-questions`: Parse question PDFs

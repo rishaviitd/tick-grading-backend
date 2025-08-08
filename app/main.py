@@ -1109,11 +1109,13 @@ async def get_assignments():
                             "diagram_url": question.get("diagram_url"),
                             "table_url": question.get("table_url"),
                             "created_at": question.get("created_at"),
-                            "updated_at": question.get("updated_at")
+                            "updated_at": question.get("updated_at"),
+                            # Include rubric so UI can show status badges
+                            "rubric": question.get("rubric")
                         }
                         assignment_data["question_details"].append(question_data)
-                
-                assignment_data["total_questions"] = len(assignment_data["question_details"])
+            
+            assignment_data["total_questions"] = len(assignment_data["question_details"])
             
             assignments_with_details.append(assignment_data)
         
@@ -1128,6 +1130,107 @@ async def get_assignments():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to get assignments: {str(e)}")
 
+
+# New: Get rubric for a specific question
+@app.get('/api/questions/{question_id}/rubric')
+async def get_question_rubric(question_id: str):
+    """
+    Get the rubric (if any) for a specific question by its ID.
+    """
+    try:
+        from database.connection import pipeline_db
+        from bson import ObjectId
+        
+        # Validate ObjectId
+        try:
+            oid = ObjectId(question_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Invalid question_id: {question_id}")
+        
+        questions_collection = pipeline_db.db_manager.get_collection("questions")
+        if questions_collection is None:
+            raise HTTPException(status_code=404, detail="Questions collection not found")
+        
+        question = await questions_collection.find_one({"_id": oid})
+        if not question:
+            raise HTTPException(status_code=404, detail=f"Question {question_id} not found")
+        
+        rubric = question.get("rubric")
+        return {
+            "success": True,
+            "question_id": question_id,
+            "question_text": question.get("question_text", ""),
+            "question_type": question.get("question_type", ""),
+            "has_rubric": bool(rubric),
+            "rubric": rubric
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get rubric: {str(e)}")
+
+# Optional: Get rubrics for all questions in an assignment
+@app.get('/api/assignments/{assignment_id}/rubrics')
+async def get_assignment_rubrics(assignment_id: str):
+    """
+    Get rubrics for all questions in an assignment. Returns an array of
+    {question_id, question_text, has_rubric, rubric} objects.
+    """
+    try:
+        from database.connection import pipeline_db
+        from bson import ObjectId
+        
+        # Validate ObjectId
+        try:
+            aid = ObjectId(assignment_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Invalid assignment_id: {assignment_id}")
+        
+        assignments_collection = pipeline_db.db_manager.get_collection("assignments")
+        questions_collection = pipeline_db.db_manager.get_collection("questions")
+        if assignments_collection is None or questions_collection is None:
+            raise HTTPException(status_code=404, detail="Database collections not found")
+        
+        assignment = await assignments_collection.find_one({"_id": aid})
+        if not assignment:
+            raise HTTPException(status_code=404, detail=f"Assignment {assignment_id} not found")
+        
+        question_ids = []
+        for qref in assignment.get("questions", []):
+            if isinstance(qref, dict) and "question_id" in qref:
+                try:
+                    question_ids.append(ObjectId(qref["question_id"]))
+                except Exception:
+                    continue
+            elif isinstance(qref, str):
+                try:
+                    question_ids.append(ObjectId(qref))
+                except Exception:
+                    continue
+        
+        results = []
+        if question_ids:
+            questions = await questions_collection.find({"_id": {"$in": question_ids}}).to_list(length=None)
+            for q in questions:
+                rubric = q.get("rubric")
+                results.append({
+                    "question_id": str(q["_id"]),
+                    "question_text": q.get("question_text", ""),
+                    "question_type": q.get("question_type", ""),
+                    "has_rubric": bool(rubric),
+                    "rubric": rubric
+                })
+        
+        return {
+            "success": True,
+            "assignment_id": assignment_id,
+            "count": len(results),
+            "rubrics": results
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get assignment rubrics: {str(e)}")
 
 # Models for rubric generation
 class RubricGenerationRequest(BaseModel):
@@ -1251,3 +1354,287 @@ async def build_rubric(request: RubricGenerationRequest):
             status_code=500, 
             detail=f"Failed to generate rubric: {str(e)}\n{error_details}"
         )
+
+
+class BulkRubricGenerationRequest(BaseModel):
+    assignment_id: str
+
+
+class BulkRubricGenerationResponse(BaseModel):
+    success: bool
+    assignment_id: str
+    total_questions: int
+    processed_questions: int
+    failed_questions: int
+    results: List[dict] = []  # List of individual question results
+    errors: List[str] = []
+    total_time: Optional[float] = None
+
+
+@app.post('/build-rubrics-for-assignment', response_model=BulkRubricGenerationResponse)
+async def build_rubrics_for_assignment(request: BulkRubricGenerationRequest):
+    """
+    Generate rubrics for all questions in an assignment.
+    
+    Args:
+        request: Contains assignment_id
+        
+    Returns:
+        Bulk rubric generation results for all questions
+    """
+    import time
+    import logging
+    start_time = time.time()
+    
+    # Set up logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
+    try:
+        logger.info(f"Starting bulk rubric generation for assignment: {request.assignment_id}")
+        
+        from database.connection import pipeline_db
+        from database.schema import COLLECTION_NAMES
+        from bson import ObjectId
+        
+        # Get assignment details
+        logger.info("Getting database collections...")
+        assignments_collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["assignments"])
+        questions_collection = pipeline_db.db_manager.get_collection(COLLECTION_NAMES["questions"])
+        
+        if assignments_collection is None or questions_collection is None:
+            logger.error("Database collections not available")
+            raise HTTPException(status_code=500, detail="Database collections not available")
+        
+        logger.info("Database collections retrieved successfully")
+        
+        # Find the assignment
+        logger.info(f"Looking for assignment with ID: {request.assignment_id}")
+        try:
+            assignment = await assignments_collection.find_one({"_id": ObjectId(request.assignment_id)})
+            if not assignment:
+                logger.error(f"Assignment {request.assignment_id} not found")
+                raise HTTPException(status_code=404, detail=f"Assignment {request.assignment_id} not found")
+            logger.info(f"Assignment found: {assignment.get('title', 'Untitled')}")
+        except Exception as e:
+            logger.error(f"Error finding assignment: {e}")
+            raise HTTPException(status_code=400, detail=f"Invalid assignment ID format: {request.assignment_id}")
+        
+        # Get questions for this assignment
+        logger.info("Getting questions for assignment...")
+        questions = []
+        if assignment.get("questions"):
+            question_ids = []
+            logger.info(f"Assignment has {len(assignment['questions'])} question references")
+            
+            for i, question_ref in enumerate(assignment["questions"]):
+                logger.info(f"Processing question reference {i+1}: {question_ref}")
+                if isinstance(question_ref, dict) and "question_id" in question_ref:
+                    try:
+                        question_ids.append(ObjectId(question_ref["question_id"]))
+                        logger.info(f"Added question ID: {question_ref['question_id']}")
+                    except Exception as e:
+                        logger.warning(f"Invalid question ID format: {question_ref['question_id']} - {e}")
+                elif isinstance(question_ref, str):
+                    try:
+                        question_ids.append(ObjectId(question_ref))
+                        logger.info(f"Added question ID: {question_ref}")
+                    except Exception as e:
+                        logger.warning(f"Invalid question ID format: {question_ref} - {e}")
+                        continue
+                else:
+                    logger.warning(f"Unexpected question reference format: {type(question_ref)} - {question_ref}")
+            
+            logger.info(f"Found {len(question_ids)} valid question IDs")
+            if question_ids:
+                questions = await questions_collection.find({"_id": {"$in": question_ids}}).to_list(length=None)
+                logger.info(f"Retrieved {len(questions)} questions from database")
+        else:
+            logger.warning("Assignment has no questions array")
+        
+        if not questions:
+            return BulkRubricGenerationResponse(
+                success=True,
+                assignment_id=request.assignment_id,
+                total_questions=0,
+                processed_questions=0,
+                failed_questions=0,
+                results=[],
+                errors=["No questions found for this assignment"],
+                total_time=time.time() - start_time
+            )
+        
+        # Process each question
+        logger.info(f"Starting to process {len(questions)} questions...")
+        results = []
+        processed_count = 0
+        failed_count = 0
+        errors = []
+        
+        for i, question in enumerate(questions):
+            logger.info(f"Processing question {i+1}/{len(questions)}: {question.get('_id')}")
+            try:
+                # Convert question to the format expected by the rubric generation pipeline
+                logger.info(f"Converting question data for question {i+1}")
+                question_data = {
+                    "_id": str(question["_id"]),
+                    "run_id": assignment["run_id"],
+                    "question_text": question.get("question_text", ""),
+                    "question_marks": question.get("question_marks", 0),
+                    "question_marks_analysis": question.get("question_marks_analysis", ""),
+                    "question_type": question.get("question_type", ""),
+                    "diagram_url": question.get("diagram_url"),
+                    "table_url": question.get("table_url"),
+                    "created_at": question.get("created_at"),
+                    "updated_at": question.get("updated_at")
+                }
+                logger.info(f"Question data prepared: {question_data.get('question_text', '')[:50]}...")
+                
+                # Generate rubric for this question
+                logger.info(f"Calling build_rubric for question {i+1}")
+                rubric_request = RubricGenerationRequest(question=question_data)
+                rubric_response = await build_rubric(rubric_request)
+                logger.info(f"Rubric generation completed for question {i+1}: success={rubric_response.success}")
+                
+                if rubric_response.success:
+                    # Update the question in the database with the generated rubric
+                    await questions_collection.update_one(
+                        {"_id": question["_id"]},
+                        {
+                            "$set": {
+                                "rubric": rubric_response.rubric,
+                                "updated_at": datetime.utcnow()
+                            }
+                        }
+                    )
+                    
+                    results.append({
+                        "question_id": str(question["_id"]),
+                        "question_text": question_data["question_text"],
+                        "success": True,
+                        "rubric": rubric_response.rubric,
+                        "metadata": rubric_response.metadata,
+                        "solution": rubric_response.solution,
+                        "processing_time": rubric_response.total_time
+                    })
+                    processed_count += 1
+                else:
+                    results.append({
+                        "question_id": str(question["_id"]),
+                        "question_text": question_data["question_text"],
+                        "success": False,
+                        "errors": rubric_response.errors
+                    })
+                    failed_count += 1
+                    errors.extend(rubric_response.errors)
+                    
+            except Exception as e:
+                results.append({
+                    "question_id": str(question["_id"]),
+                    "question_text": question.get("question_text", ""),
+                    "success": False,
+                    "errors": [str(e)]
+                })
+                failed_count += 1
+                errors.append(f"Failed to process question {question.get('_id')}: {str(e)}")
+        
+        total_time = time.time() - start_time
+        logger.info(f"Bulk rubric generation completed. Processed: {processed_count}, Failed: {failed_count}, Time: {total_time:.2f}s")
+        
+        return BulkRubricGenerationResponse(
+            success=processed_count > 0,
+            assignment_id=request.assignment_id,
+            total_questions=len(questions),
+            processed_questions=processed_count,
+            failed_questions=failed_count,
+            results=results,
+            errors=errors,
+            total_time=total_time
+        )
+        
+    except HTTPException:
+        logger.error("HTTPException raised during bulk rubric generation")
+        raise
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        logger.error(f"Unexpected error during bulk rubric generation: {str(e)}")
+        logger.error(f"Error details: {error_details}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to generate rubrics for assignment: {str(e)}\n{error_details}"
+        )
+
+# New: Generate and save rubric for a specific question
+@app.post('/api/questions/{question_id}/generate-rubric')
+async def generate_and_save_question_rubric(question_id: str):
+    """
+    Generate rubric via LLM for a specific question and save it to the database.
+    Returns the generated rubric and metadata.
+    """
+    try:
+        from database.connection import pipeline_db
+        from bson import ObjectId
+        from datetime import datetime
+        
+        # Validate ObjectId
+        try:
+            oid = ObjectId(question_id)
+        except Exception:
+            raise HTTPException(status_code=400, detail=f"Invalid question_id: {question_id}")
+        
+        questions_collection = pipeline_db.db_manager.get_collection("questions")
+        if questions_collection is None:
+            raise HTTPException(status_code=404, detail="Questions collection not found")
+        
+        question = await questions_collection.find_one({"_id": oid})
+        if not question:
+            raise HTTPException(status_code=404, detail=f"Question {question_id} not found")
+        
+        # Prepare question data for the pipeline
+        question_data = {
+            "_id": str(question["_id"]),
+            # Attempt to find run_id from assignment if available (optional)
+            # Fallback: allow None
+            "run_id": question.get("run_id"),
+            "question_text": question.get("question_text", ""),
+            "question_marks": question.get("question_marks", 0),
+            "question_marks_analysis": question.get("question_marks_analysis", ""),
+            "question_type": question.get("question_type", ""),
+            "diagram_url": question.get("diagram_url"),
+            "table_url": question.get("table_url"),
+            "created_at": question.get("created_at"),
+            "updated_at": question.get("updated_at"),
+        }
+        
+        # Use the existing single-question rubric generator
+        rubric_request = RubricGenerationRequest(question=question_data)
+        rubric_response = await build_rubric(rubric_request)
+        
+        if not rubric_response.success:
+            return {
+                "success": False,
+                "question_id": question_id,
+                "errors": rubric_response.errors,
+                "total_time": rubric_response.total_time,
+            }
+        
+        # Save rubric to the question document
+        await questions_collection.update_one(
+            {"_id": oid},
+            {"$set": {"rubric": rubric_response.rubric, "updated_at": datetime.utcnow()}}
+        )
+        
+        return {
+            "success": True,
+            "question_id": question_id,
+            "rubric": rubric_response.rubric,
+            "metadata": rubric_response.metadata,
+            "solution": rubric_response.solution,
+            "total_time": rubric_response.total_time,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=500, detail=f"Failed to generate rubric for question: {str(e)}\n{traceback.format_exc()}")

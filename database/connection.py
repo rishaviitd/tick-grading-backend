@@ -367,42 +367,52 @@ class PipelineDatabase:
             logger.error(f"Failed to get tables by run_id: {e}")
             return []
     
-    async def get_diagram_by_identifier(self, diagram_identifier: str) -> Optional[Dict[str, Any]]:
-        """Get diagram by diagram_identifier from the diagrams collection"""
+    async def get_diagram_by_identifier(self, diagram_identifier: str, run_id: str = None) -> Optional[Dict[str, Any]]:
+        """Get diagram by diagram_identifier and optionally run_id from the diagrams collection"""
         try:
             collection = self.db_manager.get_collection(COLLECTION_NAMES["diagrams"])
             if collection is None:
                 logger.error("Diagrams collection not found")
                 return None
             
-            # Find diagram by diagram_identifier
-            diagram = await collection.find_one({"diagram_identifier": diagram_identifier})
+            # Build query based on available parameters
+            query = {"diagram_identifier": diagram_identifier}
+            if run_id:
+                query["run_id"] = run_id
+            
+            # Find diagram by diagram_identifier and optionally run_id
+            diagram = await collection.find_one(query)
             if diagram:
-                logger.info(f"Found diagram with identifier: {diagram_identifier}")
+                logger.info(f"Found diagram with identifier: {diagram_identifier}" + (f" and run_id: {run_id}" if run_id else ""))
                 return diagram
             else:
-                logger.warning(f"No diagram found with identifier: {diagram_identifier}")
+                logger.warning(f"No diagram found with identifier: {diagram_identifier}" + (f" and run_id: {run_id}" if run_id else ""))
                 return None
                 
         except Exception as e:
             logger.error(f"Failed to get diagram by identifier: {e}")
             return None
     
-    async def get_table_by_identifier(self, table_identifier: str) -> Optional[Dict[str, Any]]:
-        """Get table by table_identifier from the tables collection"""
+    async def get_table_by_identifier(self, table_identifier: str, run_id: str = None) -> Optional[Dict[str, Any]]:
+        """Get table by table_identifier and optionally run_id from the tables collection"""
         try:
             collection = self.db_manager.get_collection(COLLECTION_NAMES["tables"])
             if collection is None:
                 logger.error("Tables collection not found")
                 return None
             
-            # Find table by table_identifier
-            table = await collection.find_one({"table_identifier": table_identifier})
+            # Build query based on available parameters
+            query = {"table_identifier": table_identifier}
+            if run_id:
+                query["run_id"] = run_id
+            
+            # Find table by table_identifier and optionally run_id
+            table = await collection.find_one(query)
             if table:
-                logger.info(f"Found table with identifier: {table_identifier}")
+                logger.info(f"Found table with identifier: {table_identifier}" + (f" and run_id: {run_id}" if run_id else ""))
                 return table
             else:
-                logger.warning(f"No table found with identifier: {table_identifier}")
+                logger.warning(f"No table found with identifier: {table_identifier}" + (f" and run_id: {run_id}" if run_id else ""))
                 return None
                 
         except Exception as e:

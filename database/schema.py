@@ -148,6 +148,7 @@ class Diagram(BaseModel):
     # VE fields (updated during visual extraction)
     diagram_url: str = Field(..., description="Cloudinary URL for the diagram image")
     diagram_identifier: str = Field(..., description="Diagram identifier")
+    run_id: str = Field(..., description="Unique run identifier from question processing")
     
     # VM fields (updated during visual mapping)
     question_identifier: Optional[str] = Field(None, description="Question number/identifier")
@@ -165,6 +166,7 @@ class Table(BaseModel):
     # VE fields (updated during visual extraction)
     table_url: str = Field(..., description="Cloudinary URL for the table image")
     table_identifier: str = Field(..., description="Table identifier")
+    run_id: str = Field(..., description="Unique run identifier from question processing")
     
     # VM fields (updated during visual mapping)
     question_identifier: Optional[str] = Field(None, description="Question number/identifier")

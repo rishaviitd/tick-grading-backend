@@ -1693,7 +1693,7 @@ async def run_end_to_end_processing(file_content: bytes, filename: str = "upload
                                 raw_response = f.read()
                         
                         # Update visual content mapping with diagram mapping results
-                        await db_integration.update_visual_content_mapping(mapping_json)
+                        await db_integration.update_visual_content_mapping(mapping_json, pipeline_run_id)
                 except Exception as db_error:
                     print(f"Warning: Failed to save diagram mapping to database: {db_error}")
                 

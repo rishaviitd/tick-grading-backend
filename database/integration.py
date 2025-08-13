@@ -29,26 +29,28 @@ class DatabaseIntegration:
             self.db_initialized = await initialize_database()
         return self.db_initialized
     
-    async def save_diagram(self, diagram_url: str, diagram_identifier: str) -> Optional[str]:
+    async def save_diagram(self, diagram_url: str, diagram_identifier: str, run_id: str) -> Optional[str]:
         """Save a single diagram to the diagrams collection"""
         if not await self.initialize():
             return None
         
         diagram = Diagram(
             diagram_url=diagram_url,
-            diagram_identifier=diagram_identifier
+            diagram_identifier=diagram_identifier,
+            run_id=run_id
         )
         
         return await pipeline_db.save_diagram(diagram)
     
-    async def save_table(self, table_url: str, table_identifier: str) -> Optional[str]:
+    async def save_table(self, table_url: str, table_identifier: str, run_id: str) -> Optional[str]:
         """Save a single table to the tables collection"""
         if not await self.initialize():
             return None
         
         table = Table(
             table_url=table_url,
-            table_identifier=table_identifier
+            table_identifier=table_identifier,
+            run_id=run_id
         )
         
         return await pipeline_db.save_table(table)
@@ -213,7 +215,7 @@ class DatabaseIntegration:
                 diagram_url = figure_data.get("cloudinary_url")
                 diagram_identifier = f"figure-{figure_data.get('figure_counter', 'unknown')}"
                 if diagram_url:
-                    diagram_id = await self.save_diagram(diagram_url, diagram_identifier)
+                    diagram_id = await self.save_diagram(diagram_url, diagram_identifier, run_id)
                     if diagram_id:
                         diagram_ids.append(diagram_id)
             
@@ -224,7 +226,7 @@ class DatabaseIntegration:
                     table_url = table_data.get("cloudinary_url")
                     table_identifier = f"table-{table_data.get('table_counter', 'unknown')}"
                     if table_url:
-                        table_id = await self.save_table(table_url, table_identifier)
+                        table_id = await self.save_table(table_url, table_identifier, run_id)
                         if table_id:
                             table_ids.append(table_id)
             
@@ -294,19 +296,21 @@ class DatabaseIntegration:
             print(f"Error completing pipeline: {e}")
             return False
     
-    async def update_visual_content_mapping(self, mapping_data: Dict[str, Any]) -> bool:
+    async def update_visual_content_mapping(self, mapping_data: Dict[str, Any], run_id: str = None) -> bool:
         """Update visual content with mapping results (VM fields)"""
         if not await self.initialize():
             return False
         
         try:
             print(f"Updating visual content mapping with data: {mapping_data}")
+            if run_id:
+                print(f"Using run_id: {run_id}")
             
             # Update diagrams with mapping data
             if "figures" in mapping_data:
                 for figure_identifier, mapping_info in mapping_data["figures"].items():
-                    # Find diagram by identifier
-                    diagram = await pipeline_db.get_diagram_by_identifier(figure_identifier)
+                    # Find diagram by identifier and run_id
+                    diagram = await pipeline_db.get_diagram_by_identifier(figure_identifier, run_id)
                     if diagram:
                         diagram_id = str(diagram.get("_id"))
                         await pipeline_db.update_diagram_mapping(
@@ -316,13 +320,13 @@ class DatabaseIntegration:
                         )
                         print(f"Updated diagram {diagram_id} ({figure_identifier}) with question_identifier: {mapping_info.get('question_identifier')}, choice_location: {mapping_info.get('choice_location')}")
                     else:
-                        print(f"Warning: Could not find diagram with identifier: {figure_identifier}")
+                        print(f"Warning: Could not find diagram with identifier: {figure_identifier}" + (f" and run_id: {run_id}" if run_id else ""))
             
             # Update tables with mapping data
             if "tables" in mapping_data:
                 for table_identifier, mapping_info in mapping_data["tables"].items():
-                    # Find table by identifier
-                    table = await pipeline_db.get_table_by_identifier(table_identifier)
+                    # Find table by identifier and run_id
+                    table = await pipeline_db.get_table_by_identifier(table_identifier, run_id)
                     if table:
                         table_id = str(table.get("_id"))
                         await pipeline_db.update_table_mapping(
@@ -332,7 +336,7 @@ class DatabaseIntegration:
                         )
                         print(f"Updated table {table_id} ({table_identifier}) with question_identifier: {mapping_info.get('question_identifier')}, choice_location: {mapping_info.get('choice_location')}")
                     else:
-                        print(f"Warning: Could not find table with identifier: {table_identifier}")
+                        print(f"Warning: Could not find table with identifier: {table_identifier}" + (f" and run_id: {run_id}" if run_id else ""))
             
             return True
             
@@ -499,6 +503,8 @@ class DatabaseIntegration:
                 })
         
         return questions
+    
+
     
 
     
